@@ -45,7 +45,7 @@ function SignaturePad({ canvasRef, onChangePreview }) {
 
     ctx.lineWidth = 2;
     ctx.lineCap = 'round';
-    ctx.strokeStyle = '#000000';
+    ctx.strokeStyle = '#111827';
     ctx.lineTo(pos.x, pos.y);
     ctx.stroke();
   }
@@ -62,8 +62,8 @@ function SignaturePad({ canvasRef, onChangePreview }) {
     <canvas
       ref={canvasRef}
       width={500}
-      height={200}
-      className="signature-canvas"
+      height={220}
+      style={styles.signatureCanvas}
       onMouseDown={startDrawing}
       onMouseMove={draw}
       onMouseUp={endDrawing}
@@ -106,15 +106,15 @@ export default function InspectionPage() {
       const inspectionData = response.data;
 
       const sortedItems = [...inspectionData.items].sort((a, b) => {
-        const locationCompare = a.checklistItem.location.localeCompare(
-          b.checklistItem.location,
+        const locationCompare = (a.checklistItem.location || '').localeCompare(
+          b.checklistItem.location || '',
           'pt-BR'
         );
 
         if (locationCompare !== 0) return locationCompare;
 
-        return a.checklistItem.itemName.localeCompare(
-          b.checklistItem.itemName,
+        return (a.checklistItem.itemName || '').localeCompare(
+          b.checklistItem.itemName || '',
           'pt-BR'
         );
       });
@@ -402,7 +402,6 @@ export default function InspectionPage() {
     const ctx = targetCanvas.getContext('2d');
     ctx.fillStyle = '#ffffff';
     ctx.fillRect(0, 0, targetWidth, targetHeight);
-
     ctx.drawImage(canvas, 0, 0, targetWidth, targetHeight);
 
     return targetCanvas.toDataURL('image/jpeg', 0.75);
@@ -431,7 +430,7 @@ export default function InspectionPage() {
 
       alert('Assinatura do vistoriador salva com sucesso.');
     } catch (error) {
-      console.error('Erro ao salvar assinatura do vistoriador:', error);
+      console.error(error);
       alert(
         error.response?.data?.error ||
           error.response?.data?.message ||
@@ -466,7 +465,7 @@ export default function InspectionPage() {
 
       alert('Assinatura do cliente salva com sucesso.');
     } catch (error) {
-      console.error('Erro ao salvar assinatura do cliente:', error);
+      console.error(error);
       alert(
         error.response?.data?.error ||
           error.response?.data?.message ||
@@ -535,7 +534,8 @@ export default function InspectionPage() {
 
     if (inspection.reopenedFromPending) {
       return inspection.items.filter(
-        (item) => item.status === 'NAO_CONFORME' && !savedItemIds.includes(item.id)
+        (item) =>
+          item.status === 'NAO_CONFORME' && !savedItemIds.includes(item.id)
       );
     }
 
@@ -567,72 +567,101 @@ export default function InspectionPage() {
 
   if (!inspection) {
     return (
-      <div className="page">
-        <div className="card">
-          <p>Carregando vistoria...</p>
+      <div style={styles.page}>
+        <div style={styles.card}>
+          <p style={styles.loadingText}>Carregando vistoria...</p>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="page">
-      <div className="card inspection-header-card">
+    <div style={styles.page}>
+      <div style={styles.headerCard}>
         <div>
-          <h2>
+          <h1 style={styles.title}>
             {inspection.apartment.enterprise.name} - Apto {inspection.apartment.number}
-          </h2>
-          <p>Responsável: {inspection.user.name}</p>
-          <p>Status da vistoria: {inspection.status}</p>
+          </h1>
+          <p style={styles.metaText}>
+            <strong>Responsável:</strong> {inspection.user.name}
+          </p>
+          <p style={styles.metaText}>
+            <strong>Status da vistoria:</strong> {inspection.status}
+          </p>
           {inspection.reopenedFromPending && (
-            <p>Modo de revisão: exibindo apenas itens com pendência.</p>
+            <p style={styles.reviewText}>
+              Modo de revisão: exibindo apenas itens com pendência.
+            </p>
           )}
         </div>
 
-        <div className="inspection-header-actions">
-          <button onClick={handleDownloadReport}>Gerar relatório PDF</button>
-          <button onClick={handleFinishInspection} disabled={finishing}>
+        <div style={styles.headerButtons}>
+          <button style={styles.secondaryButton} onClick={handleDownloadReport}>
+            Gerar relatório PDF
+          </button>
+
+          <button
+            style={styles.primaryButton}
+            onClick={handleFinishInspection}
+            disabled={finishing}
+          >
             {finishing ? 'Finalizando...' : 'Finalizar vistoria'}
           </button>
         </div>
       </div>
 
       {visibleItems.length > 0 && (
-        <div className="card bulk-actions-card">
-          <div className="bulk-actions-row">
-            <label className="checkbox-inline">
-              <input
-                type="checkbox"
-                checked={allVisibleSelected}
-                onChange={(e) => toggleSelectAllVisibleItems(e.target.checked, visibleItems)}
-              />
-              Selecionar todos os itens visíveis
-            </label>
-          </div>
+        <div style={styles.card}>
+          <h2 style={styles.sectionTitle}>Ações em lote</h2>
 
-          <div className="bulk-actions-row">
-            <select value={bulkStatus} onChange={(e) => setBulkStatus(e.target.value)}>
+          <label style={styles.checkboxRow}>
+            <input
+              type="checkbox"
+              checked={allVisibleSelected}
+              onChange={(e) =>
+                toggleSelectAllVisibleItems(e.target.checked, visibleItems)
+              }
+            />
+            <span>Selecionar todos os itens visíveis</span>
+          </label>
+
+          <div style={styles.bulkColumn}>
+            <select
+              value={bulkStatus}
+              onChange={(e) => setBulkStatus(e.target.value)}
+              style={styles.input}
+            >
               <option value="CONFORME">Conforme</option>
               <option value="NAO_CONFORME">Não conforme</option>
               <option value="PENDENTE">Pendente</option>
             </select>
 
-            <button onClick={handleApplyBulkStatus} disabled={applyingBulk}>
+            <button
+              style={styles.secondaryButton}
+              onClick={handleApplyBulkStatus}
+              disabled={applyingBulk}
+            >
               {applyingBulk ? 'Aplicando...' : 'Aplicar status nos selecionados'}
             </button>
 
-            <button onClick={handleSaveSelectedItems} disabled={savingBulk}>
+            <button
+              style={styles.primaryButton}
+              onClick={handleSaveSelectedItems}
+              disabled={savingBulk}
+            >
               {savingBulk ? 'Salvando...' : 'Salvar itens selecionados'}
             </button>
           </div>
 
-          <p>Itens selecionados: {selectedItemIds.length}</p>
+          <p style={styles.selectedInfo}>
+            Itens selecionados: {selectedItemIds.length}
+          </p>
         </div>
       )}
 
       {groupedItems.length === 0 && (
-        <div className="card">
-          <p>
+        <div style={styles.card}>
+          <p style={styles.emptyText}>
             {inspection.reopenedFromPending
               ? 'Não há itens com pendência para exibir.'
               : 'Todos os itens desta etapa já foram tratados.'}
@@ -641,91 +670,111 @@ export default function InspectionPage() {
       )}
 
       {groupedItems.map((group) => (
-        <div key={group.location} className="location-group">
-          <div className="location-title">
-            <h3>{group.location}</h3>
-          </div>
+        <div key={group.location} style={styles.groupSection}>
+          <h2 style={styles.groupTitle}>{group.location}</h2>
 
-          <div className="inspection-list">
+          <div style={styles.itemsColumn}>
             {group.items.map((item) => {
               const draft = getDraftItem(item.id);
               const previewToShow =
                 draft?.localPreviewUrl || draft?.photoUrl || item.photoUrl || '';
 
               return (
-                <div key={item.id} className="inspection-item-card">
-                  <label className="checkbox-inline checkbox-top">
+                <div key={item.id} style={styles.itemCard}>
+                  <label style={styles.checkboxRow}>
                     <input
                       type="checkbox"
                       checked={selectedItemIds.includes(item.id)}
                       onChange={() => toggleItemSelection(item.id)}
                     />
-                    Selecionar item
+                    <span>Selecionar item</span>
                   </label>
 
-                  <h3>{item.checklistItem.itemName}</h3>
-                  <p>
-                    <strong>Localização:</strong> {item.checklistItem.location}
-                  </p>
-                  <p>
-                    <strong>Quantidade:</strong> {item.checklistItem.quantity}
-                  </p>
+                  <h3 style={styles.itemTitle}>{item.checklistItem.itemName}</h3>
 
-                  <label className="field-label">Status</label>
-                  <select
-                    value={draft?.status || item.status}
-                    onChange={(e) => updateDraftItem(item.id, 'status', e.target.value)}
-                  >
-                    <option value="PENDENTE">Pendente</option>
-                    <option value="CONFORME">Conforme</option>
-                    <option value="NAO_CONFORME">Não conforme</option>
-                  </select>
-
-                  <label className="field-label">Observações</label>
-                  <textarea
-                    placeholder="Descreva a observação do item"
-                    value={draft?.notes || ''}
-                    onChange={(e) => updateDraftItem(item.id, 'notes', e.target.value)}
-                  />
-
-                  <label className="field-label">Foto do item</label>
-
-                  <div className="photo-actions">
-                    <label className="photo-button">
-                      Tirar foto
-                      <input
-                        type="file"
-                        accept="image/*"
-                        capture="environment"
-                        onChange={(e) => handleSelectPhoto(item.id, e.target.files[0])}
-                      />
-                    </label>
-
-                    <label className="photo-button photo-button-secondary">
-                      Galeria
-                      <input
-                        type="file"
-                        accept="image/*"
-                        onChange={(e) => handleSelectPhoto(item.id, e.target.files[0])}
-                      />
-                    </label>
+                  <div style={styles.infoBlock}>
+                    <p style={styles.infoLine}>
+                      <strong>Localização:</strong> {item.checklistItem.location}
+                    </p>
+                    <p style={styles.infoLine}>
+                      <strong>Quantidade:</strong> {item.checklistItem.quantity}
+                    </p>
                   </div>
 
-                  {draft?.selectedFile && (
-                    <p className="selected-file-name">
-                      Foto selecionada: {draft.selectedFile.name}
-                    </p>
-                  )}
+                  <div style={styles.fieldBlock}>
+                    <label style={styles.fieldLabel}>Status</label>
+                    <select
+                      value={draft?.status || item.status}
+                      onChange={(e) =>
+                        updateDraftItem(item.id, 'status', e.target.value)
+                      }
+                      style={styles.input}
+                    >
+                      <option value="PENDENTE">Pendente</option>
+                      <option value="CONFORME">Conforme</option>
+                      <option value="NAO_CONFORME">Não conforme</option>
+                    </select>
+                  </div>
 
-                  {previewToShow && (
-                    <img
-                      src={previewToShow}
-                      alt="Item"
-                      className="item-image"
+                  <div style={styles.fieldBlock}>
+                    <label style={styles.fieldLabel}>Observações</label>
+                    <textarea
+                      placeholder="Descreva a observação do item"
+                      value={draft?.notes || ''}
+                      onChange={(e) =>
+                        updateDraftItem(item.id, 'notes', e.target.value)
+                      }
+                      style={styles.textarea}
                     />
-                  )}
+                  </div>
+
+                  <div style={styles.fieldBlock}>
+                    <label style={styles.fieldLabel}>Foto do item</label>
+
+                    <div style={styles.photoButtonsColumn}>
+                      <label style={styles.photoButton}>
+                        Tirar foto
+                        <input
+                          type="file"
+                          accept="image/*"
+                          capture="environment"
+                          onChange={(e) =>
+                            handleSelectPhoto(item.id, e.target.files[0])
+                          }
+                          style={{ display: 'none' }}
+                        />
+                      </label>
+
+                      <label style={styles.photoButtonSecondary}>
+                        Escolher da galeria
+                        <input
+                          type="file"
+                          accept="image/*"
+                          onChange={(e) =>
+                            handleSelectPhoto(item.id, e.target.files[0])
+                          }
+                          style={{ display: 'none' }}
+                        />
+                      </label>
+                    </div>
+
+                    {draft?.selectedFile && (
+                      <p style={styles.fileName}>
+                        Foto selecionada: {draft.selectedFile.name}
+                      </p>
+                    )}
+
+                    {previewToShow && (
+                      <img
+                        src={previewToShow}
+                        alt="Item"
+                        style={styles.imagePreview}
+                      />
+                    )}
+                  </div>
 
                   <button
+                    style={styles.primaryButton}
                     onClick={() => handleSaveItem(item.id)}
                     disabled={savingItemId === item.id}
                   >
@@ -738,9 +787,10 @@ export default function InspectionPage() {
         </div>
       ))}
 
-      <div className="card signature-card">
-        <h3>Assinatura do vistoriador</h3>
-        <div className="signature-box">
+      <div style={styles.card}>
+        <h2 style={styles.sectionTitle}>Assinatura do vistoriador</h2>
+
+        <div style={styles.signatureBox}>
           <SignaturePad
             canvasRef={inspectorCanvasRef}
             onChangePreview={setInspectorPreview}
@@ -751,12 +801,13 @@ export default function InspectionPage() {
           <img
             src={inspectorPreview}
             alt="Assinatura do vistoriador"
-            className="signature-preview"
+            style={styles.signaturePreview}
           />
         )}
 
-        <div className="signature-actions">
+        <div style={styles.signatureButtons}>
           <button
+            style={styles.primaryButton}
             onClick={handleSaveInspectorSignature}
             disabled={savingInspectorSignature}
           >
@@ -765,15 +816,19 @@ export default function InspectionPage() {
               : 'Salvar assinatura do vistoriador'}
           </button>
 
-          <button onClick={() => clearCanvas(inspectorCanvasRef, setInspectorPreview)}>
+          <button
+            style={styles.secondaryButton}
+            onClick={() => clearCanvas(inspectorCanvasRef, setInspectorPreview)}
+          >
             Limpar assinatura do vistoriador
           </button>
         </div>
       </div>
 
-      <div className="card signature-card">
-        <h3>Assinatura do cliente</h3>
-        <div className="signature-box">
+      <div style={styles.card}>
+        <h2 style={styles.sectionTitle}>Assinatura do cliente</h2>
+
+        <div style={styles.signatureBox}>
           <SignaturePad
             canvasRef={clientCanvasRef}
             onChangePreview={setClientPreview}
@@ -784,12 +839,13 @@ export default function InspectionPage() {
           <img
             src={clientPreview}
             alt="Assinatura do cliente"
-            className="signature-preview"
+            style={styles.signaturePreview}
           />
         )}
 
-        <div className="signature-actions">
+        <div style={styles.signatureButtons}>
           <button
+            style={styles.primaryButton}
             onClick={handleSaveClientSignature}
             disabled={savingClientSignature}
           >
@@ -798,7 +854,10 @@ export default function InspectionPage() {
               : 'Salvar assinatura do cliente'}
           </button>
 
-          <button onClick={() => clearCanvas(clientCanvasRef, setClientPreview)}>
+          <button
+            style={styles.secondaryButton}
+            onClick={() => clearCanvas(clientCanvasRef, setClientPreview)}
+          >
             Limpar assinatura do cliente
           </button>
         </div>
@@ -806,3 +865,244 @@ export default function InspectionPage() {
     </div>
   );
 }
+
+const styles = {
+  page: {
+    minHeight: '100vh',
+    background: '#f3f4f6',
+    padding: '16px',
+    paddingBottom: '32px',
+  },
+  card: {
+    background: '#ffffff',
+    borderRadius: '18px',
+    padding: '16px',
+    boxShadow: '0 6px 20px rgba(0,0,0,0.08)',
+    marginBottom: '16px',
+  },
+  headerCard: {
+    background: '#ffffff',
+    borderRadius: '18px',
+    padding: '18px',
+    boxShadow: '0 6px 20px rgba(0,0,0,0.08)',
+    marginBottom: '16px',
+    display: 'flex',
+    flexDirection: 'column',
+    gap: '16px',
+  },
+  title: {
+    fontSize: '1.9rem',
+    lineHeight: 1.15,
+    marginBottom: '12px',
+    color: '#0f172a',
+  },
+  metaText: {
+    fontSize: '1rem',
+    color: '#334155',
+    marginBottom: '8px',
+  },
+  reviewText: {
+    fontSize: '0.95rem',
+    color: '#b45309',
+    background: '#fef3c7',
+    borderRadius: '12px',
+    padding: '10px 12px',
+    marginTop: '8px',
+  },
+  headerButtons: {
+    display: 'flex',
+    flexDirection: 'column',
+    gap: '10px',
+  },
+  primaryButton: {
+    width: '100%',
+    minHeight: '48px',
+    border: 'none',
+    borderRadius: '14px',
+    background: '#2563eb',
+    color: '#ffffff',
+    fontWeight: '700',
+    fontSize: '1rem',
+    padding: '12px 16px',
+    cursor: 'pointer',
+  },
+  secondaryButton: {
+    width: '100%',
+    minHeight: '48px',
+    border: 'none',
+    borderRadius: '14px',
+    background: '#e2e8f0',
+    color: '#0f172a',
+    fontWeight: '700',
+    fontSize: '1rem',
+    padding: '12px 16px',
+    cursor: 'pointer',
+  },
+  sectionTitle: {
+    fontSize: '1.3rem',
+    marginBottom: '12px',
+    color: '#0f172a',
+  },
+  checkboxRow: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '10px',
+    fontWeight: '600',
+    fontSize: '1rem',
+    color: '#0f172a',
+    marginBottom: '12px',
+  },
+  bulkColumn: {
+    display: 'flex',
+    flexDirection: 'column',
+    gap: '10px',
+  },
+  selectedInfo: {
+    marginTop: '10px',
+    color: '#475569',
+    fontWeight: '600',
+  },
+  groupSection: {
+    marginBottom: '18px',
+  },
+  groupTitle: {
+    fontSize: '1.5rem',
+    color: '#111827',
+    marginBottom: '10px',
+    paddingLeft: '4px',
+  },
+  itemsColumn: {
+    display: 'flex',
+    flexDirection: 'column',
+    gap: '14px',
+  },
+  itemCard: {
+    background: '#ffffff',
+    borderRadius: '18px',
+    padding: '16px',
+    boxShadow: '0 6px 20px rgba(0,0,0,0.08)',
+  },
+  itemTitle: {
+    fontSize: '1.45rem',
+    lineHeight: 1.2,
+    marginBottom: '12px',
+    color: '#0f172a',
+  },
+  infoBlock: {
+    display: 'flex',
+    flexDirection: 'column',
+    gap: '8px',
+    marginBottom: '14px',
+  },
+  infoLine: {
+    color: '#334155',
+    fontSize: '1rem',
+  },
+  fieldBlock: {
+    marginBottom: '14px',
+  },
+  fieldLabel: {
+    display: 'block',
+    fontWeight: '700',
+    marginBottom: '8px',
+    color: '#0f172a',
+  },
+  input: {
+    width: '100%',
+    minHeight: '48px',
+    borderRadius: '14px',
+    border: '1px solid #cbd5e1',
+    padding: '12px 14px',
+    fontSize: '1rem',
+    background: '#ffffff',
+    color: '#111827',
+  },
+  textarea: {
+    width: '100%',
+    minHeight: '100px',
+    borderRadius: '14px',
+    border: '1px solid #cbd5e1',
+    padding: '12px 14px',
+    fontSize: '1rem',
+    resize: 'vertical',
+    background: '#ffffff',
+    color: '#111827',
+  },
+  photoButtonsColumn: {
+    display: 'flex',
+    flexDirection: 'column',
+    gap: '10px',
+  },
+  photoButton: {
+    width: '100%',
+    minHeight: '48px',
+    borderRadius: '14px',
+    background: '#2563eb',
+    color: '#ffffff',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    fontWeight: '700',
+    padding: '12px 16px',
+    cursor: 'pointer',
+  },
+  photoButtonSecondary: {
+    width: '100%',
+    minHeight: '48px',
+    borderRadius: '14px',
+    background: '#475569',
+    color: '#ffffff',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    fontWeight: '700',
+    padding: '12px 16px',
+    cursor: 'pointer',
+  },
+  fileName: {
+    marginTop: '10px',
+    color: '#475569',
+    fontSize: '0.95rem',
+  },
+  imagePreview: {
+    width: '100%',
+    maxHeight: '260px',
+    objectFit: 'cover',
+    borderRadius: '14px',
+    marginTop: '12px',
+    border: '1px solid #e2e8f0',
+  },
+  signatureBox: {
+    border: '2px dashed #cbd5e1',
+    borderRadius: '16px',
+    overflow: 'hidden',
+    background: '#ffffff',
+  },
+  signatureCanvas: {
+    width: '100%',
+    height: '220px',
+    display: 'block',
+    background: '#ffffff',
+    touchAction: 'none',
+  },
+  signaturePreview: {
+    width: '100%',
+    borderRadius: '14px',
+    marginTop: '12px',
+    border: '1px solid #e2e8f0',
+  },
+  signatureButtons: {
+    display: 'flex',
+    flexDirection: 'column',
+    gap: '10px',
+    marginTop: '12px',
+  },
+  loadingText: {
+    color: '#334155',
+    fontSize: '1rem',
+  },
+  emptyText: {
+    color: '#475569',
+    fontSize: '1rem',
+  },
+};
