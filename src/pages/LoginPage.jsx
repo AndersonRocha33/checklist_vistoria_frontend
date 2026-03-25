@@ -24,9 +24,14 @@ export default function LoginPage() {
     try {
       await login(form.email, form.password);
       navigate('/dashboard');
-    } catch (err) {
-      setError(err.response?.data?.message || 'Erro ao fazer login.');
-    }
+    } catch (error) {
+  console.error(error);
+  setError(
+    error.response?.data?.message ||
+    error.response?.data?.error ||
+    'Erro ao fazer login.'
+  );
+}
   }
 
   return (
