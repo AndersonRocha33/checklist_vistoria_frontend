@@ -1,10 +1,8 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import api from '../services/api';
-import { useAuth } from '../contexts/AuthContext';
+import api from '../services/api.js';
 
 export default function DashboardPage() {
-  const { user, logout } = useAuth();
   const navigate = useNavigate();
 
   const [enterprises, setEnterprises] = useState([]);
@@ -20,6 +18,9 @@ export default function DashboardPage() {
   const [statusFilter, setStatusFilter] = useState('ALL');
   const [sortBy, setSortBy] = useState('NUMBER');
 
+  const savedUser = localStorage.getItem('user');
+  const user = savedUser ? JSON.parse(savedUser) : null;
+
   useEffect(() => {
     loadEnterprises();
     loadAllApartments();
@@ -28,7 +29,7 @@ export default function DashboardPage() {
   async function loadEnterprises() {
     try {
       const response = await api.get('/enterprises');
-      setEnterprises(response.data);
+      setEnterprises(Array.isArray(response.data) ? response.data : []);
     } catch (error) {
       console.error(error);
       setUploadError('Erro ao carregar empreendimentos.');
@@ -38,11 +39,17 @@ export default function DashboardPage() {
   async function loadAllApartments() {
     try {
       const response = await api.get('/apartments');
-      setApartments(response.data);
+      setApartments(Array.isArray(response.data) ? response.data : []);
     } catch (error) {
       console.error(error);
       setUploadError('Erro ao carregar apartamentos.');
     }
+  }
+
+  function logout() {
+    localStorage.removeItem('token');
+    localStorage.removeItem('user');
+    navigate('/login');
   }
 
   async function handleStartInspection(apartmentId) {
@@ -73,8 +80,8 @@ export default function DashboardPage() {
 
       const response = await api.post('/upload/csv', formData, {
         headers: {
-          'Content-Type': 'multipart/form-data'
-        }
+          'Content-Type': 'multipart/form-data',
+        },
       });
 
       setUploadMessage(
@@ -104,21 +111,33 @@ export default function DashboardPage() {
       NAO_VISTORIADO: 'Não vistoriado',
       EM_VISTORIA: 'Em vistoria',
       VISTORIADO: 'Vistoriado',
-      VISTORIADO_COM_PENDENCIA: 'Com pendência'
+      VISTORIADO_COM_PENDENCIA: 'Com pendência',
     };
 
     return labels[status] || status;
   }
 
-  function getStatusClass(status) {
-    const classes = {
-      NAO_VISTORIADO: 'status-badge status-gray',
-      EM_VISTORIA: 'status-badge status-blue',
-      VISTORIADO: 'status-badge status-green',
-      VISTORIADO_COM_PENDENCIA: 'status-badge status-yellow'
+  function getStatusStyle(status) {
+    const styles = {
+      NAO_VISTORIADO: {
+        background: '#e5e7eb',
+        color: '#374151',
+      },
+      EM_VISTORIA: {
+        background: '#dbeafe',
+        color: '#1d4ed8',
+      },
+      VISTORIADO: {
+        background: '#dcfce7',
+        color: '#166534',
+      },
+      VISTORIADO_COM_PENDENCIA: {
+        background: '#fef3c7',
+        color: '#92400e',
+      },
     };
 
-    return classes[status] || 'status-badge status-gray';
+    return styles[status] || styles.NAO_VISTORIADO;
   }
 
   const filteredApartments = useMemo(() => {
@@ -133,7 +152,7 @@ export default function DashboardPage() {
       result = result.filter(
         (a) =>
           String(a.number).toLowerCase().includes(term) ||
-          String(a.enterpriseName).toLowerCase().includes(term)
+          String(a.enterpriseName || '').toLowerCase().includes(term)
       );
     }
 
@@ -146,22 +165,29 @@ export default function DashboardPage() {
         if (b.naoConformeCount !== a.naoConformeCount) {
           return b.naoConformeCount - a.naoConformeCount;
         }
-        return String(a.number).localeCompare(String(b.number), 'pt-BR', { numeric: true });
+
+        return String(a.number).localeCompare(String(b.number), 'pt-BR', {
+          numeric: true,
+        });
       });
     } else if (sortBy === 'ENTERPRISE') {
       result.sort((a, b) => {
-        const enterpriseCompare = String(a.enterpriseName).localeCompare(
-          String(b.enterpriseName),
+        const enterpriseCompare = String(a.enterpriseName || '').localeCompare(
+          String(b.enterpriseName || ''),
           'pt-BR'
         );
 
         if (enterpriseCompare !== 0) return enterpriseCompare;
 
-        return String(a.number).localeCompare(String(b.number), 'pt-BR', { numeric: true });
+        return String(a.number).localeCompare(String(b.number), 'pt-BR', {
+          numeric: true,
+        });
       });
     } else {
       result.sort((a, b) =>
-        String(a.number).localeCompare(String(b.number), 'pt-BR', { numeric: true })
+        String(a.number).localeCompare(String(b.number), 'pt-BR', {
+          numeric: true,
+        })
       );
     }
 
@@ -171,27 +197,44 @@ export default function DashboardPage() {
   const metrics = useMemo(() => {
     return {
       total: filteredApartments.length,
-      naoVistoriado: filteredApartments.filter((a) => a.inspectionStatus === 'NAO_VISTORIADO').length,
-      emVistoria: filteredApartments.filter((a) => a.inspectionStatus === 'EM_VISTORIA').length,
-      vistoriado: filteredApartments.filter((a) => a.inspectionStatus === 'VISTORIADO').length,
-      comPendencia: filteredApartments.filter((a) => a.inspectionStatus === 'VISTORIADO_COM_PENDENCIA').length
+      itensDistintos: filteredApartments.reduce(
+        (acc, item) => acc + (item.totalDistinctItems || 0),
+        0
+      ),
+      conforme: filteredApartments.reduce(
+        (acc, item) => acc + (item.conformeCount || 0),
+        0
+      ),
+      naoConforme: filteredApartments.reduce(
+        (acc, item) => acc + (item.naoConformeCount || 0),
+        0
+      ),
+      pendente: filteredApartments.reduce(
+        (acc, item) => acc + (item.pendenteCount || 0),
+        0
+      ),
     };
   }, [filteredApartments]);
 
   return (
-    <div className="page">
-      <header className="topbar">
+    <div style={styles.page}>
+      <header style={styles.topbar}>
         <div>
-          <h2>Checklist de Entrega</h2>
-          <p>Usuário responsável: {user?.name}</p>
+          <h1 style={styles.pageTitle}>Checklist de Entrega</h1>
+          <p style={styles.pageSubtitle}>
+            Usuário responsável: {user?.nome || user?.name || 'Usuário'}
+          </p>
         </div>
-        <button onClick={logout}>Sair</button>
+
+        <button onClick={logout} style={styles.secondaryButton}>
+          Sair
+        </button>
       </header>
 
-      <div className="card">
-        <h3 style={{ marginBottom: '12px' }}>Importar checklist via CSV</h3>
+      <div style={styles.card}>
+        <h2 style={styles.sectionTitle}>Importar checklist via CSV</h2>
 
-        <form onSubmit={handleCsvUpload} className="form">
+        <form onSubmit={handleCsvUpload} style={styles.form}>
           <input
             id="csv-input"
             type="file"
@@ -199,99 +242,125 @@ export default function DashboardPage() {
             onChange={(e) => setCsvFile(e.target.files[0])}
           />
 
-          <button type="submit" disabled={uploading}>
+          <button type="submit" disabled={uploading} style={styles.primaryButton}>
             {uploading ? 'Importando...' : 'Importar CSV'}
           </button>
-
-          {uploadMessage && <p className="success">{uploadMessage}</p>}
-          {uploadError && <p className="error">{uploadError}</p>}
         </form>
+
+        {uploadMessage ? <p style={styles.successText}>{uploadMessage}</p> : null}
+        {uploadError ? <p style={styles.errorText}>{uploadError}</p> : null}
       </div>
 
-      <div className="card filters">
-        <select
-          value={selectedEnterprise}
-          onChange={(e) => setSelectedEnterprise(e.target.value)}
-        >
-          <option value="">Todos os empreendimentos</option>
-          {enterprises.map((enterprise) => (
-            <option key={enterprise.id} value={enterprise.id}>
-              {enterprise.name}
-            </option>
-          ))}
-        </select>
+      <div style={styles.card}>
+        <h2 style={styles.sectionTitle}>Filtros</h2>
 
-        <input
-          placeholder="Buscar por apartamento ou empreendimento..."
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-        />
+        <div style={styles.filtersGrid}>
+          <select
+            value={selectedEnterprise}
+            onChange={(e) => setSelectedEnterprise(e.target.value)}
+            style={styles.input}
+          >
+            <option value="">Todos os empreendimentos</option>
+            {enterprises.map((enterprise) => (
+              <option key={enterprise.id} value={enterprise.id}>
+                {enterprise.name}
+              </option>
+            ))}
+          </select>
 
-        <select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)}>
-          <option value="ALL">Todos os status</option>
-          <option value="NAO_VISTORIADO">Não vistoriado</option>
-          <option value="EM_VISTORIA">Em vistoria</option>
-          <option value="VISTORIADO">Vistoriado</option>
-          <option value="VISTORIADO_COM_PENDENCIA">Com pendência</option>
-        </select>
+          <input
+            placeholder="Buscar por apartamento ou empreendimento..."
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            style={styles.input}
+          />
 
-        <select value={sortBy} onChange={(e) => setSortBy(e.target.value)}>
-          <option value="NUMBER">Ordenar por número</option>
-          <option value="ENTERPRISE">Ordenar por empreendimento</option>
-          <option value="PENDENCY">Mais pendências primeiro</option>
-        </select>
-      </div>
+          <select
+            value={statusFilter}
+            onChange={(e) => setStatusFilter(e.target.value)}
+            style={styles.input}
+          >
+            <option value="ALL">Todos os status</option>
+            <option value="NAO_VISTORIADO">Não vistoriado</option>
+            <option value="EM_VISTORIA">Em vistoria</option>
+            <option value="VISTORIADO">Vistoriado</option>
+            <option value="VISTORIADO_COM_PENDENCIA">Com pendência</option>
+          </select>
 
-      <div className="metrics-grid">
-        <div className="metric-card">
-          <h4>Total</h4>
-          <p>{metrics.total}</p>
-        </div>
-
-        <div className="metric-card">
-          <h4>Não vistoriados</h4>
-          <p>{metrics.naoVistoriado}</p>
-        </div>
-
-        <div className="metric-card">
-          <h4>Em vistoria</h4>
-          <p>{metrics.emVistoria}</p>
-        </div>
-
-        <div className="metric-card">
-          <h4>Vistoriados</h4>
-          <p>{metrics.vistoriado}</p>
-        </div>
-
-        <div className="metric-card">
-          <h4>Com pendência</h4>
-          <p>{metrics.comPendencia}</p>
+          <select
+            value={sortBy}
+            onChange={(e) => setSortBy(e.target.value)}
+            style={styles.input}
+          >
+            <option value="NUMBER">Ordenar por número</option>
+            <option value="ENTERPRISE">Ordenar por empreendimento</option>
+            <option value="PENDENCY">Mais pendências primeiro</option>
+          </select>
         </div>
       </div>
 
-      {filteredApartments.length === 0 && (
-        <div className="card">
-          <p>Nenhum apartamento encontrado com os filtros atuais.</p>
+      <div style={styles.metricsGrid}>
+        <div style={styles.metricCard}>
+          <h3 style={styles.metricTitle}>Apartamentos</h3>
+          <p style={styles.metricValue}>{metrics.total}</p>
         </div>
-      )}
 
-      <div className="apartment-grid">
+        <div style={styles.metricCard}>
+          <h3 style={styles.metricTitle}>Itens distintos</h3>
+          <p style={styles.metricValue}>{metrics.itensDistintos}</p>
+        </div>
+
+        <div style={styles.metricCard}>
+          <h3 style={styles.metricTitle}>Conformes</h3>
+          <p style={styles.metricValue}>{metrics.conforme}</p>
+        </div>
+
+        <div style={styles.metricCard}>
+          <h3 style={styles.metricTitle}>Não conformes</h3>
+          <p style={styles.metricValue}>{metrics.naoConforme}</p>
+        </div>
+
+        <div style={styles.metricCard}>
+          <h3 style={styles.metricTitle}>Pendentes</h3>
+          <p style={styles.metricValue}>{metrics.pendente}</p>
+        </div>
+      </div>
+
+      {filteredApartments.length === 0 ? (
+        <div style={styles.card}>
+          <p style={{ margin: 0 }}>
+            Nenhum apartamento encontrado com os filtros atuais.
+          </p>
+        </div>
+      ) : null}
+
+      <div style={styles.apartmentGrid}>
         {filteredApartments.map((apartment) => (
-          <div key={apartment.id} className="apartment-card">
-            <p className="enterprise-label">{apartment.enterpriseName}</p>
-            <h3>Apto {apartment.number}</h3>
-            <p>Itens distintos: {apartment.totalDistinctItems}</p>
-            <p>Conformes: {apartment.conformeCount}</p>
-            <p>Não conformes: {apartment.naoConformeCount}</p>
-            <p>Pendentes: {apartment.pendenteCount}</p>
-
-            <p>
-              <span className={getStatusClass(apartment.inspectionStatus)}>
-                {getStatusLabel(apartment.inspectionStatus)}
-              </span>
+          <div key={apartment.id} style={styles.apartmentCard}>
+            <p style={styles.enterpriseLabel}>{apartment.enterpriseName}</p>
+            <h3 style={styles.apartmentTitle}>Apto {apartment.number}</h3>
+            <p style={styles.infoText}>
+              Itens distintos: {apartment.totalDistinctItems}
             </p>
+            <p style={styles.infoText}>Conformes: {apartment.conformeCount}</p>
+            <p style={styles.infoText}>
+              Não conformes: {apartment.naoConformeCount}
+            </p>
+            <p style={styles.infoText}>Pendentes: {apartment.pendenteCount}</p>
 
-            <button onClick={() => handleStartInspection(apartment.id)}>
+            <div
+              style={{
+                ...styles.statusBadge,
+                ...getStatusStyle(apartment.inspectionStatus),
+              }}
+            >
+              {getStatusLabel(apartment.inspectionStatus)}
+            </div>
+
+            <button
+              onClick={() => handleStartInspection(apartment.id)}
+              style={styles.primaryButton}
+            >
               Abrir vistoria
             </button>
           </div>
@@ -300,3 +369,149 @@ export default function DashboardPage() {
     </div>
   );
 }
+
+const styles = {
+  page: {
+    minHeight: '100vh',
+    background: '#f3f4f6',
+    padding: '24px',
+    boxSizing: 'border-box',
+  },
+  topbar: {
+    display: 'flex',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    gap: '16px',
+    marginBottom: '24px',
+    flexWrap: 'wrap',
+  },
+  pageTitle: {
+    margin: 0,
+    fontSize: '2rem',
+    color: '#0f172a',
+  },
+  pageSubtitle: {
+    margin: '8px 0 0 0',
+    color: '#475569',
+  },
+  card: {
+    background: '#ffffff',
+    borderRadius: '18px',
+    padding: '20px',
+    boxShadow: '0 10px 30px rgba(0,0,0,0.06)',
+    marginBottom: '20px',
+  },
+  sectionTitle: {
+    margin: '0 0 16px 0',
+    color: '#0f172a',
+  },
+  form: {
+    display: 'flex',
+    gap: '12px',
+    flexWrap: 'wrap',
+    alignItems: 'center',
+  },
+  filtersGrid: {
+    display: 'grid',
+    gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))',
+    gap: '12px',
+  },
+  input: {
+    width: '100%',
+    height: '46px',
+    padding: '0 14px',
+    borderRadius: '12px',
+    border: '1px solid #cbd5e1',
+    fontSize: '1rem',
+    boxSizing: 'border-box',
+    outline: 'none',
+  },
+  metricsGrid: {
+    display: 'grid',
+    gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))',
+    gap: '16px',
+    marginBottom: '20px',
+  },
+  metricCard: {
+    background: '#ffffff',
+    borderRadius: '18px',
+    padding: '18px',
+    boxShadow: '0 10px 30px rgba(0,0,0,0.06)',
+  },
+  metricTitle: {
+    margin: 0,
+    fontSize: '1rem',
+    color: '#475569',
+  },
+  metricValue: {
+    margin: '10px 0 0 0',
+    fontSize: '2rem',
+    fontWeight: '700',
+    color: '#0f172a',
+  },
+  apartmentGrid: {
+    display: 'grid',
+    gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))',
+    gap: '16px',
+  },
+  apartmentCard: {
+    background: '#ffffff',
+    borderRadius: '18px',
+    padding: '20px',
+    boxShadow: '0 10px 30px rgba(0,0,0,0.06)',
+    display: 'flex',
+    flexDirection: 'column',
+    gap: '8px',
+  },
+  enterpriseLabel: {
+    margin: 0,
+    color: '#64748b',
+    fontSize: '0.95rem',
+  },
+  apartmentTitle: {
+    margin: 0,
+    color: '#0f172a',
+  },
+  infoText: {
+    margin: 0,
+    color: '#334155',
+  },
+  statusBadge: {
+    display: 'inline-block',
+    borderRadius: '999px',
+    padding: '8px 12px',
+    fontSize: '0.9rem',
+    fontWeight: '700',
+    width: 'fit-content',
+    marginTop: '6px',
+    marginBottom: '8px',
+  },
+  primaryButton: {
+    height: '44px',
+    border: 'none',
+    borderRadius: '12px',
+    background: '#2563eb',
+    color: '#ffffff',
+    fontWeight: '700',
+    cursor: 'pointer',
+    padding: '0 16px',
+  },
+  secondaryButton: {
+    height: '44px',
+    border: 'none',
+    borderRadius: '12px',
+    background: '#e2e8f0',
+    color: '#0f172a',
+    fontWeight: '700',
+    cursor: 'pointer',
+    padding: '0 16px',
+  },
+  successText: {
+    marginTop: '12px',
+    color: '#166534',
+  },
+  errorText: {
+    marginTop: '12px',
+    color: '#dc2626',
+  },
+};

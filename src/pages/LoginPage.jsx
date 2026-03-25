@@ -1,8 +1,8 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import api from '../services/api';
+import api from '../services/api.js';
 
-export default function Login() {
+export default function LoginPage() {
   const navigate = useNavigate();
 
   const [modoCadastro, setModoCadastro] = useState(false);
@@ -69,7 +69,7 @@ export default function Login() {
         setMensagemSucesso('Login realizado com sucesso.');
 
         setTimeout(() => {
-          navigate('/apartments');
+          navigate('/dashboard');
         }, 500);
       }
     } catch (error) {
