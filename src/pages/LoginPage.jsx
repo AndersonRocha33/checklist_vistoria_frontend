@@ -1,79 +1,279 @@
 import { useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
-import { useAuth } from '../contexts/AuthContext';
+import { useNavigate } from 'react-router-dom';
+import api from '../services/api';
 
-export default function LoginPage() {
-  const { login } = useAuth();
+export default function Login() {
   const navigate = useNavigate();
 
-  const [form, setForm] = useState({
+  const [isLogin, setIsLogin] = useState(true);
+  const [formData, setFormData] = useState({
+    nome: '',
     email: '',
-    password: ''
+    senha: '',
   });
-  const [showPassword, setShowPassword] = useState(false);
-  const [error, setError] = useState('');
+  const [loading, setLoading] = useState(false);
+  const [mensagemErro, setMensagemErro] = useState('');
+  const [mensagemSucesso, setMensagemSucesso] = useState('');
+  const [mostrarSenha, setMostrarSenha] = useState(false);
 
-  function handleChange(e) {
-    setForm({ ...form, [e.target.name]: e.target.value });
+  function handleChange(event) {
+    const { name, value } = event.target;
+
+    setFormData((prev) => ({
+      ...prev,
+      [name]: value,
+    }));
   }
 
-  async function handleSubmit(e) {
-    e.preventDefault();
-    setError('');
+  async function handleSubmit(event) {
+    event.preventDefault();
+
+    setMensagemErro('');
+    setMensagemSucesso('');
+    setLoading(true);
 
     try {
-      await login(form.email, form.password);
-      navigate('/dashboard');
+      if (isLogin) {
+        const response = await api.post('/auth/login', {
+          email: formData.email.trim().toLowerCase(),
+          senha: formData.senha,
+        });
+
+        const { token, user } = response.data;
+
+        if (token) {
+          localStorage.setItem('token', token);
+        }
+
+        if (user) {
+          localStorage.setItem('user', JSON.stringify(user));
+        }
+
+        setMensagemSucesso('Login realizado com sucesso.');
+
+        setTimeout(() => {
+          navigate('/dashboard');
+        }, 500);
+      } else {
+        await api.post('/auth/register', {
+          nome: formData.nome.trim(),
+          email: formData.email.trim().toLowerCase(),
+          senha: formData.senha,
+        });
+
+        setMensagemSucesso('Cadastro realizado com sucesso. Agora faça login.');
+        setIsLogin(true);
+        setFormData({
+          nome: '',
+          email: formData.email.trim().toLowerCase(),
+          senha: '',
+        });
+      }
     } catch (error) {
-  console.error(error);
-  setError(
-    error.response?.data?.message ||
-    error.response?.data?.error ||
-    'Erro ao fazer login.'
-  );
-}
+      console.error('Erro no login/cadastro:', error);
+
+      if (error.response?.data?.message) {
+        setMensagemErro(error.response.data.message);
+      } else if (error.code === 'ECONNABORTED') {
+        setMensagemErro(
+          'A requisição demorou demais. Tente novamente em alguns segundos.'
+        );
+      } else if (error.message === 'Network Error') {
+        setMensagemErro(
+          'Não foi possível conectar ao servidor. Verifique a internet e tente novamente.'
+        );
+      } else {
+        setMensagemErro('Ocorreu um erro ao processar sua solicitação.');
+      }
+    } finally {
+      setLoading(false);
+    }
   }
 
   return (
-    <div className="container">
-      <div className="card" style={{ width: '100%', maxWidth: '420px' }}>
-        <h1 style={{ marginBottom: '16px' }}>Login</h1>
+    <div style={styles.container}>
+      <div style={styles.card}>
+        <h1 style={styles.title}>
+          {isLogin ? 'Entrar' : 'Cadastrar'}
+        </h1>
 
-        <form onSubmit={handleSubmit} className="form">
-          <input
-            type="email"
-            name="email"
-            placeholder="Email"
-            value={form.email}
-            onChange={handleChange}
-          />
+        <form onSubmit={handleSubmit} style={styles.form}>
+          {!isLogin && (
+            <div style={styles.field}>
+              <label style={styles.label}>Nome</label>
+              <input
+                type="text"
+                name="nome"
+                value={formData.nome}
+                onChange={handleChange}
+                placeholder="Digite seu nome"
+                style={styles.input}
+                required={!isLogin}
+              />
+            </div>
+          )}
 
-          <div className="password-wrapper">
+          <div style={styles.field}>
+            <label style={styles.label}>E-mail</label>
             <input
-              type={showPassword ? 'text' : 'password'}
-              name="password"
-              placeholder="Senha"
-              value={form.password}
+              type="email"
+              name="email"
+              value={formData.email}
               onChange={handleChange}
+              placeholder="Digite seu e-mail"
+              style={styles.input}
+              required
             />
-            <button
-              type="button"
-              className="toggle-password"
-              onClick={() => setShowPassword(!showPassword)}
-            >
-              {showPassword ? 'Ocultar' : 'Ver'}
-            </button>
           </div>
 
-          {error && <p className="error">{error}</p>}
+          <div style={styles.field}>
+            <label style={styles.label}>Senha</label>
+            <div style={styles.passwordWrapper}>
+              <input
+                type={mostrarSenha ? 'text' : 'password'}
+                name="senha"
+                value={formData.senha}
+                onChange={handleChange}
+                placeholder="Digite sua senha"
+                style={styles.inputPassword}
+                required
+              />
+              <button
+                type="button"
+                onClick={() => setMostrarSenha((prev) => !prev)}
+                style={styles.passwordButton}
+              >
+                {mostrarSenha ? 'Ocultar' : 'Ver'}
+              </button>
+            </div>
+          </div>
 
-          <button type="submit">Entrar</button>
+          {mensagemErro ? (
+            <div style={styles.errorBox}>{mensagemErro}</div>
+          ) : null}
+
+          {mensagemSucesso ? (
+            <div style={styles.successBox}>{mensagemSucesso}</div>
+          ) : null}
+
+          <button type="submit" style={styles.submitButton} disabled={loading}>
+            {loading
+              ? 'Carregando...'
+              : isLogin
+              ? 'Entrar'
+              : 'Cadastrar'}
+          </button>
         </form>
 
-        <p style={{ marginTop: '16px' }}>
-          Não tem conta? <Link to="/register">Cadastrar</Link>
-        </p>
+        <button
+          type="button"
+          onClick={() => {
+            setIsLogin((prev) => !prev);
+            setMensagemErro('');
+            setMensagemSucesso('');
+          }}
+          style={styles.switchButton}
+        >
+          {isLogin
+            ? 'Ainda não tem conta? Cadastre-se'
+            : 'Já tem conta? Faça login'}
+        </button>
       </div>
     </div>
   );
 }
+
+const styles = {
+  container: {
+    minHeight: '100vh',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: '16px',
+    background: '#f5f5f5',
+  },
+  card: {
+    width: '100%',
+    maxWidth: '420px',
+    background: '#fff',
+    borderRadius: '16px',
+    padding: '24px',
+    boxShadow: '0 10px 25px rgba(0,0,0,0.08)',
+  },
+  title: {
+    margin: '0 0 24px 0',
+    textAlign: 'center',
+  },
+  form: {
+    display: 'flex',
+    flexDirection: 'column',
+    gap: '16px',
+  },
+  field: {
+    display: 'flex',
+    flexDirection: 'column',
+    gap: '8px',
+  },
+  label: {
+    fontWeight: '600',
+  },
+  input: {
+    height: '44px',
+    borderRadius: '10px',
+    border: '1px solid #ccc',
+    padding: '0 12px',
+    fontSize: '16px',
+    outline: 'none',
+  },
+  passwordWrapper: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '8px',
+  },
+  inputPassword: {
+    flex: 1,
+    height: '44px',
+    borderRadius: '10px',
+    border: '1px solid #ccc',
+    padding: '0 12px',
+    fontSize: '16px',
+    outline: 'none',
+  },
+  passwordButton: {
+    height: '44px',
+    border: 'none',
+    borderRadius: '10px',
+    padding: '0 12px',
+    cursor: 'pointer',
+  },
+  submitButton: {
+    height: '46px',
+    border: 'none',
+    borderRadius: '10px',
+    cursor: 'pointer',
+    fontWeight: '700',
+    fontSize: '16px',
+  },
+  switchButton: {
+    marginTop: '16px',
+    width: '100%',
+    background: 'transparent',
+    border: 'none',
+    cursor: 'pointer',
+    textDecoration: 'underline',
+  },
+  errorBox: {
+    background: '#ffe5e5',
+    color: '#b00020',
+    borderRadius: '10px',
+    padding: '10px 12px',
+    fontSize: '14px',
+  },
+  successBox: {
+    background: '#e7f8ea',
+    color: '#1b5e20',
+    borderRadius: '10px',
+    padding: '10px 12px',
+    fontSize: '14px',
+  },
+};
