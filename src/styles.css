@@ -10,20 +10,12 @@ body {
   color: #111827;
 }
 
-/* ========================= */
-/* LAYOUT BASE */
-/* ========================= */
-
 .page {
   padding: 16px;
   padding-bottom: 100px;
   max-width: 1200px;
   margin: 0 auto;
 }
-
-/* ========================= */
-/* HEADER / TOPO */
-/* ========================= */
 
 .topbar {
   position: sticky;
@@ -66,10 +58,6 @@ body {
   flex-wrap: wrap;
 }
 
-/* ========================= */
-/* CARDS */
-/* ========================= */
-
 .card {
   background: white;
   padding: 16px;
@@ -77,10 +65,6 @@ body {
   margin-bottom: 16px;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
 }
-
-/* ========================= */
-/* FORM */
-/* ========================= */
 
 .form {
   display: flex;
@@ -116,10 +100,6 @@ button:active {
   transform: scale(0.98);
 }
 
-/* ========================= */
-/* GRID APARTAMENTOS */
-/* ========================= */
-
 .apartment-grid {
   display: grid;
   gap: 14px;
@@ -145,10 +125,6 @@ button:active {
   font-weight: bold;
   color: #6b7280;
 }
-
-/* ========================= */
-/* STATUS */
-/* ========================= */
 
 .status-badge {
   display: inline-block;
@@ -179,10 +155,6 @@ button:active {
   color: #92400e;
 }
 
-/* ========================= */
-/* METRICS */
-/* ========================= */
-
 .metrics-grid {
   display: grid;
   grid-template-columns: repeat(2, 1fr);
@@ -208,19 +180,11 @@ button:active {
   font-weight: bold;
 }
 
-/* ========================= */
-/* FILTROS */
-/* ========================= */
-
 .filters {
   display: flex;
   flex-direction: column;
   gap: 10px;
 }
-
-/* ========================= */
-/* BULK ACTIONS */
-/* ========================= */
 
 .bulk-actions-card {
   display: flex;
@@ -257,10 +221,6 @@ button:active {
   margin-bottom: 12px;
 }
 
-/* ========================= */
-/* GRUPOS DE LOCALIZAÇÃO */
-/* ========================= */
-
 .location-group {
   margin-bottom: 20px;
 }
@@ -273,10 +233,6 @@ button:active {
   font-size: 22px;
   color: #111827;
 }
-
-/* ========================= */
-/* ITENS DE VISTORIA */
-/* ========================= */
 
 .inspection-list {
   display: grid;
@@ -315,10 +271,6 @@ button:active {
   color: #374151;
   margin-top: 8px;
 }
-
-/* ========================= */
-/* FOTO */
-/* ========================= */
 
 .photo-actions {
   display: flex;
@@ -360,10 +312,6 @@ button:active {
   border: 1px solid #e5e7eb;
 }
 
-/* ========================= */
-/* ASSINATURA */
-/* ========================= */
-
 .signature-card h3 {
   margin-bottom: 12px;
 }
@@ -399,10 +347,6 @@ button:active {
   margin-top: 12px;
 }
 
-/* ========================= */
-/* BOTÃO FIXO */
-/* ========================= */
-
 .fixed-bottom {
   position: fixed;
   bottom: 0;
@@ -419,10 +363,6 @@ button:active {
   padding: 16px;
 }
 
-/* ========================= */
-/* UTILITÁRIOS */
-/* ========================= */
-
 .error {
   color: #dc2626;
   font-weight: 600;
@@ -432,10 +372,6 @@ button:active {
   color: #166534;
   font-weight: 600;
 }
-
-/* ========================= */
-/* DESKTOP */
-/* ========================= */
 
 @media (min-width: 768px) {
   .metrics-grid {
@@ -454,10 +390,6 @@ button:active {
     grid-template-columns: repeat(2, 1fr);
   }
 }
-
-/* ========================= */
-/* MOBILE */
-/* ========================= */
 
 @media (max-width: 767px) {
   .topbar {

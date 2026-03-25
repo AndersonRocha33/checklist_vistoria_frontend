@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import api from '../services/api';
+import api from '../services/api.js';
 
 function SignaturePad({ canvasRef, onChangePreview }) {
   const isDrawingRef = useRef(false);
@@ -20,7 +20,7 @@ function SignaturePad({ canvasRef, onChangePreview }) {
 
     return {
       x: clientX - rect.left,
-      y: clientY - rect.top
+      y: clientY - rect.top,
     };
   }
 
@@ -121,7 +121,7 @@ export default function InspectionPage() {
 
       setInspection({
         ...inspectionData,
-        items: sortedItems
+        items: sortedItems,
       });
 
       setDraftItems(
@@ -131,7 +131,7 @@ export default function InspectionPage() {
           notes: item.notes || '',
           photoUrl: item.photoUrl || '',
           selectedFile: null,
-          localPreviewUrl: ''
+          localPreviewUrl: '',
         }))
       );
 
@@ -162,9 +162,7 @@ export default function InspectionPage() {
   function updateDraftItem(itemId, field, value) {
     setDraftItems((prev) =>
       prev.map((item) =>
-        item.id === itemId
-          ? { ...item, [field]: value }
-          : item
+        item.id === itemId ? { ...item, [field]: value } : item
       )
     );
   }
@@ -206,7 +204,7 @@ export default function InspectionPage() {
         return {
           ...item,
           selectedFile: file,
-          localPreviewUrl: previewUrl
+          localPreviewUrl: previewUrl,
         };
       })
     );
@@ -226,7 +224,7 @@ export default function InspectionPage() {
         formData.append('file', draft.selectedFile);
 
         const uploadResponse = await api.post('/upload', formData, {
-          headers: { 'Content-Type': 'multipart/form-data' }
+          headers: { 'Content-Type': 'multipart/form-data' },
         });
 
         finalPhotoUrl = uploadResponse.data.fileUrl;
@@ -235,7 +233,7 @@ export default function InspectionPage() {
       await api.put(`/inspections/item/${itemId}`, {
         status: draft.status,
         notes: draft.notes,
-        photoUrl: finalPhotoUrl
+        photoUrl: finalPhotoUrl,
       });
 
       setInspection((prev) => ({
@@ -246,10 +244,10 @@ export default function InspectionPage() {
                 ...item,
                 status: draft.status,
                 notes: draft.notes,
-                photoUrl: finalPhotoUrl
+                photoUrl: finalPhotoUrl,
               }
             : item
-        )
+        ),
       }));
 
       setDraftItems((prev) =>
@@ -266,19 +264,21 @@ export default function InspectionPage() {
             notes: draft.notes,
             photoUrl: finalPhotoUrl,
             selectedFile: null,
-            localPreviewUrl: ''
+            localPreviewUrl: '',
           };
         })
       );
 
       setSavedItemIds((prev) => [...new Set([...prev, itemId])]);
-      setSelectedItemIds((prev) => prev.filter((currentId) => currentId !== itemId));
+      setSelectedItemIds((prev) =>
+        prev.filter((currentId) => currentId !== itemId)
+      );
     } catch (error) {
       console.error(error);
       alert(
         error.response?.data?.error ||
-        error.response?.data?.message ||
-        'Erro ao salvar item.'
+          error.response?.data?.message ||
+          'Erro ao salvar item.'
       );
     } finally {
       setSavingItemId(null);
@@ -326,7 +326,7 @@ export default function InspectionPage() {
           formData.append('file', draft.selectedFile);
 
           const uploadResponse = await api.post('/upload', formData, {
-            headers: { 'Content-Type': 'multipart/form-data' }
+            headers: { 'Content-Type': 'multipart/form-data' },
           });
 
           finalPhotoUrl = uploadResponse.data.fileUrl;
@@ -335,7 +335,7 @@ export default function InspectionPage() {
         await api.put(`/inspections/item/${itemId}`, {
           status: draft.status,
           notes: draft.notes,
-          photoUrl: finalPhotoUrl
+          photoUrl: finalPhotoUrl,
         });
 
         setInspection((prev) => ({
@@ -346,10 +346,10 @@ export default function InspectionPage() {
                   ...item,
                   status: draft.status,
                   notes: draft.notes,
-                  photoUrl: finalPhotoUrl
+                  photoUrl: finalPhotoUrl,
                 }
               : item
-          )
+          ),
         }));
 
         setDraftItems((prev) =>
@@ -366,7 +366,7 @@ export default function InspectionPage() {
               notes: draft.notes,
               photoUrl: finalPhotoUrl,
               selectedFile: null,
-              localPreviewUrl: ''
+              localPreviewUrl: '',
             };
           })
         );
@@ -380,8 +380,8 @@ export default function InspectionPage() {
       console.error(error);
       alert(
         error.response?.data?.error ||
-        error.response?.data?.message ||
-        'Erro ao salvar itens selecionados.'
+          error.response?.data?.message ||
+          'Erro ao salvar itens selecionados.'
       );
     } finally {
       setSavingBulk(false);
@@ -420,13 +420,13 @@ export default function InspectionPage() {
       setSavingInspectorSignature(true);
 
       await api.put(`/inspections/${id}/signatures`, {
-        inspectorSignature: signatureData
+        inspectorSignature: signatureData,
       });
 
       setInspectorPreview(signatureData);
       setInspection((prev) => ({
         ...prev,
-        inspectorSignature: signatureData
+        inspectorSignature: signatureData,
       }));
 
       alert('Assinatura do vistoriador salva com sucesso.');
@@ -434,9 +434,9 @@ export default function InspectionPage() {
       console.error('Erro ao salvar assinatura do vistoriador:', error);
       alert(
         error.response?.data?.error ||
-        error.response?.data?.message ||
-        error.message ||
-        'Erro ao salvar assinatura do vistoriador.'
+          error.response?.data?.message ||
+          error.message ||
+          'Erro ao salvar assinatura do vistoriador.'
       );
     } finally {
       setSavingInspectorSignature(false);
@@ -455,13 +455,13 @@ export default function InspectionPage() {
       setSavingClientSignature(true);
 
       await api.put(`/inspections/${id}/signatures`, {
-        clientSignature: signatureData
+        clientSignature: signatureData,
       });
 
       setClientPreview(signatureData);
       setInspection((prev) => ({
         ...prev,
-        clientSignature: signatureData
+        clientSignature: signatureData,
       }));
 
       alert('Assinatura do cliente salva com sucesso.');
@@ -469,9 +469,9 @@ export default function InspectionPage() {
       console.error('Erro ao salvar assinatura do cliente:', error);
       alert(
         error.response?.data?.error ||
-        error.response?.data?.message ||
-        error.message ||
-        'Erro ao salvar assinatura do cliente.'
+          error.response?.data?.message ||
+          error.message ||
+          'Erro ao salvar assinatura do cliente.'
       );
     } finally {
       setSavingClientSignature(false);
@@ -490,8 +490,8 @@ export default function InspectionPage() {
       console.error(error);
       alert(
         error.response?.data?.error ||
-        error.response?.data?.message ||
-        'Erro ao finalizar vistoria.'
+          error.response?.data?.message ||
+          'Erro ao finalizar vistoria.'
       );
     } finally {
       setFinishing(false);
@@ -501,7 +501,7 @@ export default function InspectionPage() {
   async function handleDownloadReport() {
     try {
       const response = await api.get(`/inspections/${id}/report`, {
-        responseType: 'blob'
+        responseType: 'blob',
       });
 
       const blob = new Blob([response.data], { type: 'application/pdf' });
@@ -557,7 +557,7 @@ export default function InspectionPage() {
       .sort((a, b) => a.localeCompare(b, 'pt-BR'))
       .map((location) => ({
         location,
-        items: groups[location]
+        items: groups[location],
       }));
   }, [visibleItems]);
 
@@ -566,7 +566,13 @@ export default function InspectionPage() {
     visibleItems.every((item) => selectedItemIds.includes(item.id));
 
   if (!inspection) {
-    return <div className="page">Carregando vistoria...</div>;
+    return (
+      <div className="page">
+        <div className="card">
+          <p>Carregando vistoria...</p>
+        </div>
+      </div>
+    );
   }
 
   return (
@@ -584,10 +590,7 @@ export default function InspectionPage() {
         </div>
 
         <div className="inspection-header-actions">
-          <button onClick={handleDownloadReport}>
-            Gerar relatório PDF
-          </button>
-
+          <button onClick={handleDownloadReport}>Gerar relatório PDF</button>
           <button onClick={handleFinishInspection} disabled={finishing}>
             {finishing ? 'Finalizando...' : 'Finalizar vistoria'}
           </button>
@@ -646,7 +649,8 @@ export default function InspectionPage() {
           <div className="inspection-list">
             {group.items.map((item) => {
               const draft = getDraftItem(item.id);
-              const previewToShow = draft?.localPreviewUrl || draft?.photoUrl || item.photoUrl || '';
+              const previewToShow =
+                draft?.localPreviewUrl || draft?.photoUrl || item.photoUrl || '';
 
               return (
                 <div key={item.id} className="inspection-item-card">
@@ -660,8 +664,12 @@ export default function InspectionPage() {
                   </label>
 
                   <h3>{item.checklistItem.itemName}</h3>
-                  <p><strong>Localização:</strong> {item.checklistItem.location}</p>
-                  <p><strong>Quantidade:</strong> {item.checklistItem.quantity}</p>
+                  <p>
+                    <strong>Localização:</strong> {item.checklistItem.location}
+                  </p>
+                  <p>
+                    <strong>Quantidade:</strong> {item.checklistItem.quantity}
+                  </p>
 
                   <label className="field-label">Status</label>
                   <select
@@ -675,7 +683,7 @@ export default function InspectionPage() {
 
                   <label className="field-label">Observações</label>
                   <textarea
-                    placeholder="Observações"
+                    placeholder="Descreva a observação do item"
                     value={draft?.notes || ''}
                     onChange={(e) => updateDraftItem(item.id, 'notes', e.target.value)}
                   />
@@ -738,13 +746,25 @@ export default function InspectionPage() {
             onChangePreview={setInspectorPreview}
           />
         </div>
+
         {inspectorPreview && (
-          <img src={inspectorPreview} alt="Assinatura do vistoriador" className="signature-preview" />
+          <img
+            src={inspectorPreview}
+            alt="Assinatura do vistoriador"
+            className="signature-preview"
+          />
         )}
+
         <div className="signature-actions">
-          <button onClick={handleSaveInspectorSignature} disabled={savingInspectorSignature}>
-            {savingInspectorSignature ? 'Salvando...' : 'Salvar assinatura do vistoriador'}
+          <button
+            onClick={handleSaveInspectorSignature}
+            disabled={savingInspectorSignature}
+          >
+            {savingInspectorSignature
+              ? 'Salvando...'
+              : 'Salvar assinatura do vistoriador'}
           </button>
+
           <button onClick={() => clearCanvas(inspectorCanvasRef, setInspectorPreview)}>
             Limpar assinatura do vistoriador
           </button>
@@ -759,13 +779,25 @@ export default function InspectionPage() {
             onChangePreview={setClientPreview}
           />
         </div>
+
         {clientPreview && (
-          <img src={clientPreview} alt="Assinatura do cliente" className="signature-preview" />
+          <img
+            src={clientPreview}
+            alt="Assinatura do cliente"
+            className="signature-preview"
+          />
         )}
+
         <div className="signature-actions">
-          <button onClick={handleSaveClientSignature} disabled={savingClientSignature}>
-            {savingClientSignature ? 'Salvando...' : 'Salvar assinatura do cliente'}
+          <button
+            onClick={handleSaveClientSignature}
+            disabled={savingClientSignature}
+          >
+            {savingClientSignature
+              ? 'Salvando...'
+              : 'Salvar assinatura do cliente'}
           </button>
+
           <button onClick={() => clearCanvas(clientCanvasRef, setClientPreview)}>
             Limpar assinatura do cliente
           </button>
