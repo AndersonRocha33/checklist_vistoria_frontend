@@ -42,7 +42,9 @@ export default function Login() {
 
         console.log('PAYLOAD CADASTRO:', payloadCadastro);
 
-        await api.post('/auth/register', payloadCadastro);
+        const response = await api.post('/auth/register', payloadCadastro);
+
+        console.log('RESPOSTA CADASTRO:', response.data);
 
         setMensagemSucesso('Cadastro realizado com sucesso. Agora faça login.');
         setModoCadastro(false);
@@ -58,6 +60,8 @@ export default function Login() {
 
         const response = await api.post('/auth/login', payloadLogin);
 
+        console.log('RESPOSTA LOGIN:', response.data);
+
         if (response.data.token) {
           localStorage.setItem('token', response.data.token);
         }
@@ -70,7 +74,11 @@ export default function Login() {
           localStorage.setItem('user', JSON.stringify(response.data.usuario));
         }
 
-        navigate('/');
+        setMensagemSucesso('Login realizado com sucesso.');
+
+        setTimeout(() => {
+          navigate('/apartments');
+        }, 500);
       }
     } catch (error) {
       console.error('ERRO COMPLETO:', error);
@@ -160,7 +168,11 @@ export default function Login() {
             <div style={styles.successBox}>{mensagemSucesso}</div>
           ) : null}
 
-          <button type="submit" style={styles.submitButton} disabled={loading}>
+          <button
+            type="submit"
+            style={styles.submitButton}
+            disabled={loading}
+          >
             {loading
               ? 'Carregando...'
               : modoCadastro
@@ -169,7 +181,11 @@ export default function Login() {
           </button>
         </form>
 
-        <button type="button" onClick={alternarModo} style={styles.switchButton}>
+        <button
+          type="button"
+          onClick={alternarModo}
+          style={styles.switchButton}
+        >
           {modoCadastro
             ? 'Já tem conta? Fazer login'
             : 'Ainda não tem conta? Cadastre-se'}
@@ -268,6 +284,7 @@ const styles = {
     fontSize: '1.15rem',
     fontWeight: '700',
     cursor: 'pointer',
+    opacity: 1,
   },
   switchButton: {
     width: '100%',
