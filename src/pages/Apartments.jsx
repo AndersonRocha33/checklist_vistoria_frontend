@@ -57,9 +57,7 @@ export default function Apartments() {
       {erro ? <div style={styles.errorBox}>{erro}</div> : null}
 
       {!loading && !erro && apartments.length === 0 ? (
-        <div style={styles.emptyBox}>
-          Nenhum apartamento encontrado.
-        </div>
+        <div style={styles.emptyBox}>Nenhum apartamento encontrado.</div>
       ) : null}
 
       {!loading && !erro && apartments.length > 0 ? (
