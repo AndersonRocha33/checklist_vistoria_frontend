@@ -5,85 +5,55 @@ import api from '../services/api';
 export default function Login() {
   const navigate = useNavigate();
 
-  const [isLogin, setIsLogin] = useState(true);
-  const [formData, setFormData] = useState({
-    nome: '',
-    email: '',
-    senha: '',
-  });
-  const [loading, setLoading] = useState(false);
+  const [email, setEmail] = useState('');
+  const [senha, setSenha] = useState('');
   const [mensagemErro, setMensagemErro] = useState('');
-  const [mensagemSucesso, setMensagemSucesso] = useState('');
+  const [loading, setLoading] = useState(false);
   const [mostrarSenha, setMostrarSenha] = useState(false);
 
-  function handleChange(event) {
-    const { name, value } = event.target;
-
-    setFormData((prev) => ({
-      ...prev,
-      [name]: value,
-    }));
-  }
-
-  async function handleSubmit(event) {
-    event.preventDefault();
+  async function handleSubmit(e) {
+    e.preventDefault();
 
     setMensagemErro('');
-    setMensagemSucesso('');
     setLoading(true);
 
     try {
-      if (isLogin) {
-        const response = await api.post('/auth/login', {
-          email: formData.email.trim().toLowerCase(),
-          senha: formData.senha,
-        });
+      console.log('CHAMANDO LOGIN...');
 
-        const { token, user } = response.data;
+      const response = await api.post('/auth/login', {
+        email: email.trim().toLowerCase(),
+        senha,
+      });
 
-        if (token) {
-          localStorage.setItem('token', token);
-        }
+      console.log('RESPOSTA LOGIN:', response.data);
 
-        if (user) {
-          localStorage.setItem('user', JSON.stringify(user));
-        }
+      localStorage.setItem('token', response.data.token);
+      localStorage.setItem(
+        'user',
+        JSON.stringify(response.data.user || response.data.usuario)
+      );
 
-        setMensagemSucesso('Login realizado com sucesso.');
-
-        setTimeout(() => {
-          navigate('/dashboard');
-        }, 500);
-      } else {
-        await api.post('/auth/register', {
-          nome: formData.nome.trim(),
-          email: formData.email.trim().toLowerCase(),
-          senha: formData.senha,
-        });
-
-        setMensagemSucesso('Cadastro realizado com sucesso. Agora faça login.');
-        setIsLogin(true);
-        setFormData({
-          nome: '',
-          email: formData.email.trim().toLowerCase(),
-          senha: '',
-        });
-      }
+      navigate('/'); // ajuste se sua rota for outra
     } catch (error) {
-      console.error('Erro no login/cadastro:', error);
+      console.error('ERRO COMPLETO LOGIN:', error);
+
+      const erroDetalhado = {
+        message: error.message,
+        code: error.code,
+        status: error.response?.status,
+        data: error.response?.data,
+      };
+
+      console.log('DETALHE ERRO:', erroDetalhado);
+
+      alert(JSON.stringify(erroDetalhado));
 
       if (error.response?.data?.message) {
         setMensagemErro(error.response.data.message);
       } else if (error.code === 'ECONNABORTED') {
-        setMensagemErro(
-          'A requisição demorou demais. Tente novamente em alguns segundos.'
-        );
-      } else if (error.message === 'Network Error') {
-        setMensagemErro(
-          'Não foi possível conectar ao servidor. Verifique a internet e tente novamente.'
-        );
+        setMensagemErro('Servidor demorou para responder. Tente novamente.');
       } else {
-        setMensagemErro('Ocorreu um erro ao processar sua solicitação.');
+        setMensagemErro('Erro de conexão com o servidor.');
       }
     } finally {
       setLoading(false);
@@ -93,91 +63,44 @@ export default function Login() {
   return (
     <div style={styles.container}>
       <div style={styles.card}>
-        <h1 style={styles.title}>
-          {isLogin ? 'Entrar' : 'Cadastrar'}
-        </h1>
+        <h2>Login</h2>
 
-        <form onSubmit={handleSubmit} style={styles.form}>
-          {!isLogin && (
-            <div style={styles.field}>
-              <label style={styles.label}>Nome</label>
-              <input
-                type="text"
-                name="nome"
-                value={formData.nome}
-                onChange={handleChange}
-                placeholder="Digite seu nome"
-                style={styles.input}
-                required={!isLogin}
-              />
-            </div>
-          )}
+        <form onSubmit={handleSubmit}>
+          <input
+            type="email"
+            placeholder="E-mail"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            style={styles.input}
+            required
+          />
 
-          <div style={styles.field}>
-            <label style={styles.label}>E-mail</label>
+          <div style={styles.passwordContainer}>
             <input
-              type="email"
-              name="email"
-              value={formData.email}
-              onChange={handleChange}
-              placeholder="Digite seu e-mail"
+              type={mostrarSenha ? 'text' : 'password'}
+              placeholder="Senha"
+              value={senha}
+              onChange={(e) => setSenha(e.target.value)}
               style={styles.input}
               required
             />
+            <button
+              type="button"
+              onClick={() => setMostrarSenha(!mostrarSenha)}
+              style={styles.buttonMostrar}
+            >
+              {mostrarSenha ? 'Ocultar' : 'Ver'}
+            </button>
           </div>
 
-          <div style={styles.field}>
-            <label style={styles.label}>Senha</label>
-            <div style={styles.passwordWrapper}>
-              <input
-                type={mostrarSenha ? 'text' : 'password'}
-                name="senha"
-                value={formData.senha}
-                onChange={handleChange}
-                placeholder="Digite sua senha"
-                style={styles.inputPassword}
-                required
-              />
-              <button
-                type="button"
-                onClick={() => setMostrarSenha((prev) => !prev)}
-                style={styles.passwordButton}
-              >
-                {mostrarSenha ? 'Ocultar' : 'Ver'}
-              </button>
-            </div>
-          </div>
+          {mensagemErro && (
+            <p style={{ color: 'red' }}>{mensagemErro}</p>
+          )}
 
-          {mensagemErro ? (
-            <div style={styles.errorBox}>{mensagemErro}</div>
-          ) : null}
-
-          {mensagemSucesso ? (
-            <div style={styles.successBox}>{mensagemSucesso}</div>
-          ) : null}
-
-          <button type="submit" style={styles.submitButton} disabled={loading}>
-            {loading
-              ? 'Carregando...'
-              : isLogin
-              ? 'Entrar'
-              : 'Cadastrar'}
+          <button type="submit" style={styles.button} disabled={loading}>
+            {loading ? 'Entrando...' : 'Entrar'}
           </button>
         </form>
-
-        <button
-          type="button"
-          onClick={() => {
-            setIsLogin((prev) => !prev);
-            setMensagemErro('');
-            setMensagemSucesso('');
-          }}
-          style={styles.switchButton}
-        >
-          {isLogin
-            ? 'Ainda não tem conta? Cadastre-se'
-            : 'Já tem conta? Faça login'}
-        </button>
       </div>
     </div>
   );
@@ -185,95 +108,35 @@ export default function Login() {
 
 const styles = {
   container: {
-    minHeight: '100vh',
+    height: '100vh',
     display: 'flex',
-    alignItems: 'center',
     justifyContent: 'center',
-    padding: '16px',
+    alignItems: 'center',
     background: '#f5f5f5',
   },
   card: {
-    width: '100%',
-    maxWidth: '420px',
     background: '#fff',
-    borderRadius: '16px',
-    padding: '24px',
-    boxShadow: '0 10px 25px rgba(0,0,0,0.08)',
-  },
-  title: {
-    margin: '0 0 24px 0',
+    padding: 20,
+    borderRadius: 10,
+    width: '100%',
+    maxWidth: 300,
     textAlign: 'center',
   },
-  form: {
-    display: 'flex',
-    flexDirection: 'column',
-    gap: '16px',
-  },
-  field: {
-    display: 'flex',
-    flexDirection: 'column',
-    gap: '8px',
-  },
-  label: {
-    fontWeight: '600',
-  },
   input: {
-    height: '44px',
-    borderRadius: '10px',
-    border: '1px solid #ccc',
-    padding: '0 12px',
-    fontSize: '16px',
-    outline: 'none',
-  },
-  passwordWrapper: {
-    display: 'flex',
-    alignItems: 'center',
-    gap: '8px',
-  },
-  inputPassword: {
-    flex: 1,
-    height: '44px',
-    borderRadius: '10px',
-    border: '1px solid #ccc',
-    padding: '0 12px',
-    fontSize: '16px',
-    outline: 'none',
-  },
-  passwordButton: {
-    height: '44px',
-    border: 'none',
-    borderRadius: '10px',
-    padding: '0 12px',
-    cursor: 'pointer',
-  },
-  submitButton: {
-    height: '46px',
-    border: 'none',
-    borderRadius: '10px',
-    cursor: 'pointer',
-    fontWeight: '700',
-    fontSize: '16px',
-  },
-  switchButton: {
-    marginTop: '16px',
     width: '100%',
-    background: 'transparent',
-    border: 'none',
-    cursor: 'pointer',
-    textDecoration: 'underline',
+    padding: 10,
+    margin: '10px 0',
   },
-  errorBox: {
-    background: '#ffe5e5',
-    color: '#b00020',
-    borderRadius: '10px',
-    padding: '10px 12px',
-    fontSize: '14px',
+  button: {
+    width: '100%',
+    padding: 10,
+    marginTop: 10,
   },
-  successBox: {
-    background: '#e7f8ea',
-    color: '#1b5e20',
-    borderRadius: '10px',
-    padding: '10px 12px',
-    fontSize: '14px',
+  passwordContainer: {
+    display: 'flex',
+    gap: 5,
+  },
+  buttonMostrar: {
+    padding: '10px',
   },
 };
