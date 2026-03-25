@@ -5,100 +5,37 @@ import api from '../services/api';
 export default function Login() {
   const navigate = useNavigate();
 
-  const [modoCadastro, setModoCadastro] = useState(false);
-  const [formData, setFormData] = useState({
-    nome: '',
-    email: '',
-    senha: '',
-  });
+  const [email, setEmail] = useState('');
+  const [senha, setSenha] = useState('');
   const [mostrarSenha, setMostrarSenha] = useState(false);
+  const [erro, setErro] = useState('');
   const [loading, setLoading] = useState(false);
-  const [mensagemErro, setMensagemErro] = useState('');
-  const [mensagemSucesso, setMensagemSucesso] = useState('');
 
-  function handleChange(event) {
-    const { name, value } = event.target;
+  async function handleSubmit(e) {
+    e.preventDefault();
 
-    setFormData((prevState) => ({
-      ...prevState,
-      [name]: value,
-    }));
-  }
-
-  async function handleSubmit(event) {
-    event.preventDefault();
-
-    setMensagemErro('');
-    setMensagemSucesso('');
+    setErro('');
     setLoading(true);
 
     try {
-      if (modoCadastro) {
-        const payload = {
-          nome: formData.nome.trim(),
-          email: formData.email.trim().toLowerCase(),
-          senha: formData.senha,
-        };
+      const payload = {
+        email: email.trim().toLowerCase(),
+        senha: senha, // 👈 GARANTE QUE ESTÁ ENVIANDO
+      };
 
-        console.log('PAYLOAD CADASTRO:', payload);
+      console.log('PAYLOAD LOGIN:', payload);
 
-        await api.post('/auth/register', payload);
+      const response = await api.post('/auth/login', payload);
 
-        setMensagemSucesso('Cadastro realizado com sucesso. Faça login para continuar.');
-        setModoCadastro(false);
-        setFormData({
-          nome: '',
-          email: formData.email.trim().toLowerCase(),
-          senha: '',
-        });
-      } else {
-        const payload = {
-          email: formData.email.trim().toLowerCase(),
-          senha: formData.senha,
-        };
+      localStorage.setItem('token', response.data.token);
 
-        console.log('PAYLOAD LOGIN:', payload);
-
-        const response = await api.post('/auth/login', payload);
-
-        console.log('RESPOSTA LOGIN:', response.data);
-
-        const token = response.data.token;
-        const user = response.data.user || response.data.usuario || null;
-
-        if (token) {
-          localStorage.setItem('token', token);
-        }
-
-        if (user) {
-          localStorage.setItem('user', JSON.stringify(user));
-        }
-
-        navigate('/');
-      }
+      navigate('/');
     } catch (error) {
-      console.error('ERRO COMPLETO:', error);
+      console.error('ERRO LOGIN:', error);
 
-      const status = error.response?.status;
-      const data = error.response?.data;
-
-      if (data?.message) {
-        setMensagemErro(data.message);
-      } else if (error.code === 'ECONNABORTED') {
-        setMensagemErro('O servidor demorou para responder. Tente novamente.');
-      } else if (error.message === 'Network Error') {
-        setMensagemErro('Erro de conexão com o servidor.');
-      } else {
-        setMensagemErro('Ocorreu um erro ao processar sua solicitação.');
-      }
-
-      alert(
-        JSON.stringify({
-          message: error.message,
-          code: error.code,
-          status,
-          data,
-        })
+      setErro(
+        error.response?.data?.message ||
+        'Erro ao fazer login'
       );
     } finally {
       setLoading(false);
@@ -108,96 +45,43 @@ export default function Login() {
   return (
     <div style={styles.container}>
       <div style={styles.card}>
-        <h1 style={styles.title}>
-          {modoCadastro ? 'Criar conta' : 'Entrar'}
-        </h1>
+        <h2>Entrar</h2>
 
-        <form onSubmit={handleSubmit} style={styles.form}>
-          {modoCadastro && (
-            <div style={styles.field}>
-              <label style={styles.label}>Nome</label>
-              <input
-                type="text"
-                name="nome"
-                value={formData.nome}
-                onChange={handleChange}
-                placeholder="Digite seu nome"
-                style={styles.input}
-                required
-              />
-            </div>
-          )}
+        <form onSubmit={handleSubmit}>
+          <input
+            type="email"
+            placeholder="E-mail"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            style={styles.input}
+            required
+          />
 
-          <div style={styles.field}>
-            <label style={styles.label}>E-mail</label>
+          <div style={styles.passwordContainer}>
             <input
-              type="email"
-              name="email"
-              value={formData.email}
-              onChange={handleChange}
-              placeholder="Digite seu e-mail"
+              type={mostrarSenha ? 'text' : 'password'}
+              placeholder="Senha"
+              value={senha}
+              onChange={(e) => setSenha(e.target.value)} // 👈 ESSENCIAL
               style={styles.input}
               required
             />
+
+            <button
+              type="button"
+              onClick={() => setMostrarSenha(!mostrarSenha)}
+              style={styles.buttonMostrar}
+            >
+              {mostrarSenha ? 'Ocultar' : 'Ver'}
+            </button>
           </div>
 
-          <div style={styles.field}>
-            <label style={styles.label}>Senha</label>
-            <div style={styles.passwordWrapper}>
-              <input
-                type={mostrarSenha ? 'text' : 'password'}
-                name="senha"
-                value={formData.senha}
-                onChange={handleChange}
-                placeholder="Digite sua senha"
-                style={styles.inputPassword}
-                required
-              />
-              <button
-                type="button"
-                onClick={() => setMostrarSenha((prev) => !prev)}
-                style={styles.showButton}
-              >
-                {mostrarSenha ? 'Ocultar' : 'Ver'}
-              </button>
-            </div>
-          </div>
+          {erro && <p style={{ color: 'red' }}>{erro}</p>}
 
-          {mensagemErro ? (
-            <div style={styles.errorBox}>{mensagemErro}</div>
-          ) : null}
-
-          {mensagemSucesso ? (
-            <div style={styles.successBox}>{mensagemSucesso}</div>
-          ) : null}
-
-          <button type="submit" style={styles.submitButton} disabled={loading}>
-            {loading
-              ? 'Carregando...'
-              : modoCadastro
-              ? 'Cadastrar'
-              : 'Entrar'}
+          <button type="submit" style={styles.button}>
+            {loading ? 'Carregando...' : 'Entrar'}
           </button>
         </form>
-
-        <button
-          type="button"
-          style={styles.switchButton}
-          onClick={() => {
-            setModoCadastro((prev) => !prev);
-            setMensagemErro('');
-            setMensagemSucesso('');
-            setFormData({
-              nome: '',
-              email: '',
-              senha: '',
-            });
-          }}
-        >
-          {modoCadastro
-            ? 'Já tem conta? Entrar'
-            : 'Ainda não tem conta? Cadastrar'}
-        </button>
       </div>
     </div>
   );
@@ -205,94 +89,35 @@ export default function Login() {
 
 const styles = {
   container: {
-    minHeight: '100vh',
+    height: '100vh',
     display: 'flex',
-    alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: '#f5f5f5',
-    padding: '16px',
+    alignItems: 'center',
+    background: '#f5f5f5',
   },
   card: {
+    background: '#fff',
+    padding: 20,
+    borderRadius: 10,
     width: '100%',
-    maxWidth: '420px',
-    backgroundColor: '#ffffff',
-    borderRadius: '16px',
-    padding: '24px',
-    boxShadow: '0 10px 30px rgba(0, 0, 0, 0.08)',
-  },
-  title: {
+    maxWidth: 300,
     textAlign: 'center',
-    marginBottom: '24px',
-  },
-  form: {
-    display: 'flex',
-    flexDirection: 'column',
-    gap: '16px',
-  },
-  field: {
-    display: 'flex',
-    flexDirection: 'column',
-    gap: '8px',
-  },
-  label: {
-    fontWeight: '600',
   },
   input: {
-    height: '44px',
-    borderRadius: '10px',
-    border: '1px solid #d0d0d0',
-    padding: '0 12px',
-    fontSize: '16px',
-    outline: 'none',
-  },
-  passwordWrapper: {
-    display: 'flex',
-    gap: '8px',
-  },
-  inputPassword: {
-    flex: 1,
-    height: '44px',
-    borderRadius: '10px',
-    border: '1px solid #d0d0d0',
-    padding: '0 12px',
-    fontSize: '16px',
-    outline: 'none',
-  },
-  showButton: {
-    minWidth: '84px',
-    border: 'none',
-    borderRadius: '10px',
-    cursor: 'pointer',
-    padding: '0 12px',
-  },
-  submitButton: {
-    height: '46px',
-    border: 'none',
-    borderRadius: '10px',
-    cursor: 'pointer',
-    fontWeight: '700',
-    fontSize: '16px',
-  },
-  switchButton: {
     width: '100%',
-    marginTop: '16px',
-    background: 'transparent',
-    border: 'none',
-    cursor: 'pointer',
-    textDecoration: 'underline',
+    padding: 10,
+    margin: '10px 0',
   },
-  errorBox: {
-    backgroundColor: '#ffe7e7',
-    color: '#b00020',
-    padding: '10px 12px',
-    borderRadius: '10px',
-    fontSize: '14px',
+  button: {
+    width: '100%',
+    padding: 10,
+    marginTop: 10,
   },
-  successBox: {
-    backgroundColor: '#e8f7ea',
-    color: '#1b5e20',
-    padding: '10px 12px',
-    borderRadius: '10px',
-    fontSize: '14px',
+  passwordContainer: {
+    display: 'flex',
+    gap: 5,
+  },
+  buttonMostrar: {
+    padding: '10px',
   },
 };
