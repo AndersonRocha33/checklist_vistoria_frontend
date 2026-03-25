@@ -19,7 +19,7 @@ export default function Login() {
     setMensagemSucesso('');
   }
 
-  function resetarFormulario() {
+  function limparFormulario() {
     setNome('');
     setEmail('');
     setSenha('');
@@ -37,7 +37,7 @@ export default function Login() {
         const payloadCadastro = {
           nome: nome.trim(),
           email: email.trim().toLowerCase(),
-          senha: senha,
+          senha: senha.trim(),
         };
 
         console.log('PAYLOAD CADASTRO:', payloadCadastro);
@@ -51,7 +51,7 @@ export default function Login() {
       } else {
         const payloadLogin = {
           email: email.trim().toLowerCase(),
-          senha: senha,
+          senha: senha.trim(),
         };
 
         console.log('PAYLOAD LOGIN:', payloadLogin);
@@ -77,15 +77,6 @@ export default function Login() {
     } catch (error) {
       console.error('ERRO COMPLETO:', error);
 
-      const erroDetalhado = {
-        message: error.message,
-        code: error.code,
-        status: error.response?.status,
-        data: error.response?.data,
-      };
-
-      console.log('DETALHE ERRO:', erroDetalhado);
-
       if (error.response?.data?.message) {
         setMensagemErro(error.response.data.message);
       } else if (error.code === 'ECONNABORTED') {
@@ -102,7 +93,7 @@ export default function Login() {
 
   function alternarModo() {
     setModoCadastro((valorAtual) => !valorAtual);
-    resetarFormulario();
+    limparFormulario();
     limparMensagens();
   }
 
@@ -141,7 +132,8 @@ export default function Login() {
 
           <div style={styles.field}>
             <label style={styles.label}>Senha</label>
-            <div style={styles.passwordRow}>
+
+            <div style={styles.passwordWrapper}>
               <input
                 type={mostrarSenha ? 'text' : 'password'}
                 value={senha}
@@ -151,10 +143,11 @@ export default function Login() {
                 autoComplete={modoCadastro ? 'new-password' : 'current-password'}
                 required
               />
+
               <button
                 type="button"
                 onClick={() => setMostrarSenha((valorAtual) => !valorAtual)}
-                style={styles.showButton}
+                style={styles.toggleButton}
               >
                 {mostrarSenha ? 'Ocultar' : 'Ver'}
               </button>
@@ -194,22 +187,24 @@ const styles = {
     display: 'flex',
     justifyContent: 'center',
     alignItems: 'center',
-    background: '#f2f2f2',
+    background: '#f3f4f6',
     padding: '16px',
+    boxSizing: 'border-box',
   },
   card: {
     width: '100%',
-    maxWidth: '380px',
+    maxWidth: '420px',
     background: '#ffffff',
-    borderRadius: '18px',
+    borderRadius: '20px',
     padding: '24px',
-    boxShadow: '0 10px 30px rgba(0, 0, 0, 0.08)',
+    boxShadow: '0 12px 32px rgba(0, 0, 0, 0.08)',
+    boxSizing: 'border-box',
   },
   title: {
     textAlign: 'center',
     margin: '0 0 24px 0',
     fontSize: '2rem',
-    color: '#111827',
+    color: '#0f172a',
   },
   form: {
     display: 'flex',
@@ -223,79 +218,83 @@ const styles = {
   },
   label: {
     fontSize: '1rem',
-    fontWeight: '600',
-    color: '#111827',
+    fontWeight: '700',
+    color: '#0f172a',
   },
   input: {
     width: '100%',
-    height: '48px',
-    padding: '0 14px',
-    borderRadius: '12px',
+    height: '52px',
+    padding: '0 16px',
+    borderRadius: '14px',
     border: '1px solid #cbd5e1',
     fontSize: '1rem',
     outline: 'none',
     boxSizing: 'border-box',
   },
-  passwordRow: {
+  passwordWrapper: {
     display: 'flex',
-    gap: '8px',
-    alignItems: 'stretch',
+    width: '100%',
+    gap: '10px',
+    alignItems: 'center',
   },
   passwordInput: {
     flex: 1,
+    width: '100%',
     minWidth: 0,
-    height: '48px',
-    padding: '0 14px',
-    borderRadius: '12px',
+    height: '52px',
+    padding: '0 16px',
+    borderRadius: '14px',
     border: '1px solid #cbd5e1',
     fontSize: '1rem',
     outline: 'none',
     boxSizing: 'border-box',
   },
-  showButton: {
-    minWidth: '96px',
-    height: '48px',
+  toggleButton: {
+    width: '110px',
+    minWidth: '110px',
+    height: '52px',
     border: 'none',
-    borderRadius: '12px',
+    borderRadius: '14px',
     background: '#2563eb',
     color: '#ffffff',
     fontWeight: '700',
+    fontSize: '1rem',
     cursor: 'pointer',
-    padding: '0 14px',
   },
   submitButton: {
     width: '100%',
-    height: '50px',
+    height: '54px',
     border: 'none',
-    borderRadius: '12px',
+    borderRadius: '14px',
     background: '#2563eb',
     color: '#ffffff',
-    fontSize: '1.1rem',
+    fontSize: '1.15rem',
     fontWeight: '700',
     cursor: 'pointer',
   },
   switchButton: {
     width: '100%',
-    marginTop: '16px',
+    marginTop: '18px',
     border: 'none',
     background: 'transparent',
     color: '#2563eb',
     cursor: 'pointer',
-    fontWeight: '600',
+    fontWeight: '700',
+    fontSize: '1rem',
     textDecoration: 'underline',
   },
   errorBox: {
     background: '#fee2e2',
     color: '#dc2626',
-    borderRadius: '10px',
-    padding: '10px 12px',
+    borderRadius: '12px',
+    padding: '12px 14px',
     fontSize: '0.95rem',
   },
   successBox: {
     background: '#dcfce7',
     color: '#166534',
-    borderRadius: '10px',
-    padding: '10px 12px',
+    borderRadius: '12px',
+    padding: '12px 14px',
     fontSize: '0.95rem',
   },
 };
