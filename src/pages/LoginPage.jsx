@@ -58,8 +58,6 @@ export default function Login() {
 
         const response = await api.post('/auth/login', payloadLogin);
 
-        console.log('RESPOSTA LOGIN:', response.data);
-
         if (response.data.token) {
           localStorage.setItem('token', response.data.token);
         }
@@ -239,7 +237,6 @@ const styles = {
   },
   passwordInput: {
     flex: 1,
-    width: '100%',
     minWidth: 0,
     height: '52px',
     padding: '0 16px',
