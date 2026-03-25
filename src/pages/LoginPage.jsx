@@ -40,11 +40,7 @@ export default function Login() {
           senha: senha.trim(),
         };
 
-        console.log('PAYLOAD CADASTRO:', payloadCadastro);
-
-        const response = await api.post('/auth/register', payloadCadastro);
-
-        console.log('RESPOSTA CADASTRO:', response.data);
+        await api.post('/auth/register', payloadCadastro);
 
         setMensagemSucesso('Cadastro realizado com sucesso. Agora faça login.');
         setModoCadastro(false);
@@ -56,11 +52,7 @@ export default function Login() {
           senha: senha.trim(),
         };
 
-        console.log('PAYLOAD LOGIN:', payloadLogin);
-
         const response = await api.post('/auth/login', payloadLogin);
-
-        console.log('RESPOSTA LOGIN:', response.data);
 
         if (response.data.token) {
           localStorage.setItem('token', response.data.token);
@@ -81,8 +73,6 @@ export default function Login() {
         }, 500);
       }
     } catch (error) {
-      console.error('ERRO COMPLETO:', error);
-
       if (error.response?.data?.message) {
         setMensagemErro(error.response.data.message);
       } else if (error.code === 'ECONNABORTED') {
@@ -284,7 +274,6 @@ const styles = {
     fontSize: '1.15rem',
     fontWeight: '700',
     cursor: 'pointer',
-    opacity: 1,
   },
   switchButton: {
     width: '100%',
