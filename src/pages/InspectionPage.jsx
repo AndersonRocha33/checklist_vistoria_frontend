@@ -75,6 +75,46 @@ function SignaturePad({ canvasRef, onChangePreview }) {
   );
 }
 
+function readFileAsDataUrl(file) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+
+    reader.onload = () => resolve(reader.result);
+    reader.onerror = reject;
+
+    reader.readAsDataURL(file);
+  });
+}
+
+function loadImage(dataUrl) {
+  return new Promise((resolve, reject) => {
+    const image = new Image();
+    image.onload = () => resolve(image);
+    image.onerror = reject;
+    image.src = dataUrl;
+  });
+}
+
+async function compressImageToDataUrl(file, maxWidth = 1280, quality = 0.72) {
+  const originalDataUrl = await readFileAsDataUrl(file);
+  const image = await loadImage(originalDataUrl);
+
+  const canvas = document.createElement('canvas');
+  const ratio = Math.min(1, maxWidth / image.width);
+  const width = Math.round(image.width * ratio);
+  const height = Math.round(image.height * ratio);
+
+  canvas.width = width;
+  canvas.height = height;
+
+  const ctx = canvas.getContext('2d');
+  ctx.fillStyle = '#ffffff';
+  ctx.fillRect(0, 0, width, height);
+  ctx.drawImage(image, 0, 0, width, height);
+
+  return canvas.toDataURL('image/jpeg', quality);
+}
+
 export default function InspectionPage() {
   const { id } = useParams();
   const navigate = useNavigate();
@@ -210,6 +250,16 @@ export default function InspectionPage() {
     );
   }
 
+  async function resolveFinalPhotoValue(draft) {
+    if (!draft) return '';
+
+    if (draft.selectedFile) {
+      return compressImageToDataUrl(draft.selectedFile);
+    }
+
+    return draft.photoUrl || '';
+  }
+
   async function handleSaveItem(itemId) {
     try {
       setSavingItemId(itemId);
@@ -217,18 +267,7 @@ export default function InspectionPage() {
       const draft = getDraftItem(itemId);
       if (!draft) throw new Error('Item não encontrado para salvar.');
 
-      let finalPhotoUrl = draft.photoUrl || '';
-
-      if (draft.selectedFile) {
-        const formData = new FormData();
-        formData.append('file', draft.selectedFile);
-
-        const uploadResponse = await api.post('/upload', formData, {
-          headers: { 'Content-Type': 'multipart/form-data' },
-        });
-
-        finalPhotoUrl = uploadResponse.data.fileUrl;
-      }
+      const finalPhotoUrl = await resolveFinalPhotoValue(draft);
 
       await api.put(`/inspections/item/${itemId}`, {
         status: draft.status,
@@ -319,18 +358,7 @@ export default function InspectionPage() {
         const draft = getDraftItem(itemId);
         if (!draft) continue;
 
-        let finalPhotoUrl = draft.photoUrl || '';
-
-        if (draft.selectedFile) {
-          const formData = new FormData();
-          formData.append('file', draft.selectedFile);
-
-          const uploadResponse = await api.post('/upload', formData, {
-            headers: { 'Content-Type': 'multipart/form-data' },
-          });
-
-          finalPhotoUrl = uploadResponse.data.fileUrl;
-        }
+        const finalPhotoUrl = await resolveFinalPhotoValue(draft);
 
         await api.put(`/inspections/item/${itemId}`, {
           status: draft.status,
