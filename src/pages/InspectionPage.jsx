@@ -122,12 +122,10 @@ export default function InspectionPage() {
   const [inspection, setInspection] = useState(null);
   const [draftItems, setDraftItems] = useState([]);
   const [savingItemId, setSavingItemId] = useState(null);
+  const [autoSavingItemId, setAutoSavingItemId] = useState(null);
   const [finishing, setFinishing] = useState(false);
-  const [selectedItemIds, setSelectedItemIds] = useState([]);
-  const [bulkStatus, setBulkStatus] = useState('CONFORME');
-  const [applyingBulk, setApplyingBulk] = useState(false);
-  const [savingBulk, setSavingBulk] = useState(false);
   const [savedItemIds, setSavedItemIds] = useState([]);
+  const [selectedLocation, setSelectedLocation] = useState('TODOS');
   const [inspectorPreview, setInspectorPreview] = useState('');
   const [clientPreview, setClientPreview] = useState('');
   const [savingInspectorSignature, setSavingInspectorSignature] = useState(false);
@@ -175,8 +173,6 @@ export default function InspectionPage() {
         }))
       );
 
-      setSelectedItemIds([]);
-
       if (inspectionData.reopenedFromPending) {
         setSavedItemIds(
           sortedItems
@@ -193,10 +189,15 @@ export default function InspectionPage() {
 
       setInspectorPreview(inspectionData.inspectorSignature || '');
       setClientPreview(inspectionData.clientSignature || '');
+      setSelectedLocation('TODOS');
     } catch (error) {
       console.error(error);
       alert('Erro ao carregar vistoria.');
     }
+  }
+
+  function getDraftItem(itemId) {
+    return draftItems.find((item) => item.id === itemId);
   }
 
   function updateDraftItem(itemId, field, value) {
@@ -205,27 +206,6 @@ export default function InspectionPage() {
         item.id === itemId ? { ...item, [field]: value } : item
       )
     );
-  }
-
-  function getDraftItem(itemId) {
-    return draftItems.find((item) => item.id === itemId);
-  }
-
-  function toggleItemSelection(itemId) {
-    setSelectedItemIds((prev) =>
-      prev.includes(itemId)
-        ? prev.filter((currentId) => currentId !== itemId)
-        : [...prev, itemId]
-    );
-  }
-
-  function toggleSelectAllVisibleItems(checked, visibleItems) {
-    if (checked) {
-      setSelectedItemIds(visibleItems.map((item) => item.id));
-      return;
-    }
-
-    setSelectedItemIds([]);
   }
 
   function handleSelectPhoto(itemId, file) {
@@ -260,58 +240,59 @@ export default function InspectionPage() {
     return draft.photoUrl || '';
   }
 
+  async function saveItemData(itemId, customDraft = null) {
+    const draft = customDraft || getDraftItem(itemId);
+    if (!draft) throw new Error('Item não encontrado para salvar.');
+
+    const finalPhotoUrl = await resolveFinalPhotoValue(draft);
+
+    await api.put(`/inspections/item/${itemId}`, {
+      status: draft.status,
+      notes: draft.notes,
+      photoUrl: finalPhotoUrl,
+    });
+
+    setInspection((prev) => ({
+      ...prev,
+      items: prev.items.map((item) =>
+        item.id === itemId
+          ? {
+              ...item,
+              status: draft.status,
+              notes: draft.notes,
+              photoUrl: finalPhotoUrl,
+            }
+          : item
+      ),
+    }));
+
+    setDraftItems((prev) =>
+      prev.map((item) => {
+        if (item.id !== itemId) return item;
+
+        if (item.localPreviewUrl) {
+          URL.revokeObjectURL(item.localPreviewUrl);
+        }
+
+        return {
+          ...item,
+          status: draft.status,
+          notes: draft.notes,
+          photoUrl: finalPhotoUrl,
+          selectedFile: null,
+          localPreviewUrl: '',
+        };
+      })
+    );
+
+    setSavedItemIds((prev) => [...new Set([...prev, itemId])]);
+  }
+
   async function handleSaveItem(itemId) {
     try {
       setSavingItemId(itemId);
-
-      const draft = getDraftItem(itemId);
-      if (!draft) throw new Error('Item não encontrado para salvar.');
-
-      const finalPhotoUrl = await resolveFinalPhotoValue(draft);
-
-      await api.put(`/inspections/item/${itemId}`, {
-        status: draft.status,
-        notes: draft.notes,
-        photoUrl: finalPhotoUrl,
-      });
-
-      setInspection((prev) => ({
-        ...prev,
-        items: prev.items.map((item) =>
-          item.id === itemId
-            ? {
-                ...item,
-                status: draft.status,
-                notes: draft.notes,
-                photoUrl: finalPhotoUrl,
-              }
-            : item
-        ),
-      }));
-
-      setDraftItems((prev) =>
-        prev.map((item) => {
-          if (item.id !== itemId) return item;
-
-          if (item.localPreviewUrl) {
-            URL.revokeObjectURL(item.localPreviewUrl);
-          }
-
-          return {
-            ...item,
-            status: draft.status,
-            notes: draft.notes,
-            photoUrl: finalPhotoUrl,
-            selectedFile: null,
-            localPreviewUrl: '',
-          };
-        })
-      );
-
-      setSavedItemIds((prev) => [...new Set([...prev, itemId])]);
-      setSelectedItemIds((prev) =>
-        prev.filter((currentId) => currentId !== itemId)
-      );
+      await saveItemData(itemId);
+      alert('Item salvo com sucesso.');
     } catch (error) {
       console.error(error);
       alert(
@@ -324,95 +305,42 @@ export default function InspectionPage() {
     }
   }
 
-  async function handleApplyBulkStatus() {
-    if (selectedItemIds.length === 0) {
-      alert('Selecione ao menos um item.');
-      return;
+  async function handleStatusChange(itemId, newStatus) {
+    const currentDraft = getDraftItem(itemId);
+    if (!currentDraft) return;
+
+    const updatedDraft = {
+      ...currentDraft,
+      status: newStatus,
+      notes: newStatus === 'NAO_CONFORME' ? currentDraft.notes : '',
+      photoUrl: newStatus === 'NAO_CONFORME' ? currentDraft.photoUrl : '',
+      selectedFile: newStatus === 'NAO_CONFORME' ? currentDraft.selectedFile : null,
+      localPreviewUrl:
+        newStatus === 'NAO_CONFORME' ? currentDraft.localPreviewUrl : '',
+    };
+
+    if (newStatus !== 'NAO_CONFORME' && currentDraft.localPreviewUrl) {
+      URL.revokeObjectURL(currentDraft.localPreviewUrl);
     }
 
-    setApplyingBulk(true);
+    setDraftItems((prev) =>
+      prev.map((item) => (item.id === itemId ? updatedDraft : item))
+    );
 
-    try {
-      setDraftItems((prev) =>
-        prev.map((item) =>
-          selectedItemIds.includes(item.id)
-            ? { ...item, status: bulkStatus }
-            : item
-        )
-      );
-    } finally {
-      setApplyingBulk(false);
-    }
-  }
-
-  async function handleSaveSelectedItems() {
-    try {
-      if (selectedItemIds.length === 0) {
-        alert('Selecione ao menos um item.');
-        return;
-      }
-
-      setSavingBulk(true);
-
-      for (const itemId of selectedItemIds) {
-        const draft = getDraftItem(itemId);
-        if (!draft) continue;
-
-        const finalPhotoUrl = await resolveFinalPhotoValue(draft);
-
-        await api.put(`/inspections/item/${itemId}`, {
-          status: draft.status,
-          notes: draft.notes,
-          photoUrl: finalPhotoUrl,
-        });
-
-        setInspection((prev) => ({
-          ...prev,
-          items: prev.items.map((item) =>
-            item.id === itemId
-              ? {
-                  ...item,
-                  status: draft.status,
-                  notes: draft.notes,
-                  photoUrl: finalPhotoUrl,
-                }
-              : item
-          ),
-        }));
-
-        setDraftItems((prev) =>
-          prev.map((item) => {
-            if (item.id !== itemId) return item;
-
-            if (item.localPreviewUrl) {
-              URL.revokeObjectURL(item.localPreviewUrl);
-            }
-
-            return {
-              ...item,
-              status: draft.status,
-              notes: draft.notes,
-              photoUrl: finalPhotoUrl,
-              selectedFile: null,
-              localPreviewUrl: '',
-            };
-          })
+    if (newStatus === 'CONFORME') {
+      try {
+        setAutoSavingItemId(itemId);
+        await saveItemData(itemId, updatedDraft);
+      } catch (error) {
+        console.error(error);
+        alert(
+          error.response?.data?.error ||
+            error.response?.data?.message ||
+            'Erro ao salvar item como conforme.'
         );
-
-        setSavedItemIds((prev) => [...new Set([...prev, itemId])]);
+      } finally {
+        setAutoSavingItemId(null);
       }
-
-      setSelectedItemIds([]);
-      alert('Itens selecionados salvos com sucesso.');
-    } catch (error) {
-      console.error(error);
-      alert(
-        error.response?.data?.error ||
-          error.response?.data?.message ||
-          'Erro ao salvar itens selecionados.'
-      );
-    } finally {
-      setSavingBulk(false);
     }
   }
 
@@ -572,12 +500,36 @@ export default function InspectionPage() {
     );
   }, [inspection, savedItemIds]);
 
+  const availableLocations = useMemo(() => {
+    const locations = [
+      ...new Set(
+        visibleItems.map((item) => item.checklistItem.location || 'Sem localização')
+      ),
+    ].sort((a, b) => a.localeCompare(b, 'pt-BR'));
+
+    return ['TODOS', ...locations];
+  }, [visibleItems]);
+
+  const filteredVisibleItems = useMemo(() => {
+    if (selectedLocation === 'TODOS') {
+      return visibleItems;
+    }
+
+    return visibleItems.filter(
+      (item) => (item.checklistItem.location || 'Sem localização') === selectedLocation
+    );
+  }, [visibleItems, selectedLocation]);
+
   const groupedItems = useMemo(() => {
     const groups = {};
 
-    visibleItems.forEach((item) => {
+    filteredVisibleItems.forEach((item) => {
       const location = item.checklistItem.location || 'Sem localização';
-      if (!groups[location]) groups[location] = [];
+
+      if (!groups[location]) {
+        groups[location] = [];
+      }
+
       groups[location].push(item);
     });
 
@@ -587,11 +539,9 @@ export default function InspectionPage() {
         location,
         items: groups[location],
       }));
-  }, [visibleItems]);
+  }, [filteredVisibleItems]);
 
-  const allVisibleSelected =
-    visibleItems.length > 0 &&
-    visibleItems.every((item) => selectedItemIds.includes(item.id));
+  const pendingCount = filteredVisibleItems.length;
 
   if (!inspection) {
     return (
@@ -610,12 +560,15 @@ export default function InspectionPage() {
           <h1 style={styles.title}>
             {inspection.apartment.enterprise.name} - Apto {inspection.apartment.number}
           </h1>
+
           <p style={styles.metaText}>
             <strong>Responsável:</strong> {inspection.user.name}
           </p>
+
           <p style={styles.metaText}>
             <strong>Status da vistoria:</strong> {inspection.status}
           </p>
+
           {inspection.reopenedFromPending && (
             <p style={styles.reviewText}>
               Modo de revisão: exibindo apenas itens com pendência.
@@ -638,60 +591,34 @@ export default function InspectionPage() {
         </div>
       </div>
 
-      {visibleItems.length > 0 && (
-        <div style={styles.card}>
-          <h2 style={styles.sectionTitle}>Ações em lote</h2>
+      <div style={styles.card}>
+        <h2 style={styles.sectionTitle}>Filtrar itens</h2>
 
-          <label style={styles.checkboxRow}>
-            <input
-              type="checkbox"
-              checked={allVisibleSelected}
-              onChange={(e) =>
-                toggleSelectAllVisibleItems(e.target.checked, visibleItems)
-              }
-            />
-            <span>Selecionar todos os itens visíveis</span>
-          </label>
-
-          <div style={styles.bulkColumn}>
-            <select
-              value={bulkStatus}
-              onChange={(e) => setBulkStatus(e.target.value)}
-              style={styles.input}
-            >
-              <option value="CONFORME">Conforme</option>
-              <option value="NAO_CONFORME">Não conforme</option>
-              <option value="PENDENTE">Pendente</option>
-            </select>
-
-            <button
-              style={styles.secondaryButton}
-              onClick={handleApplyBulkStatus}
-              disabled={applyingBulk}
-            >
-              {applyingBulk ? 'Aplicando...' : 'Aplicar status nos selecionados'}
-            </button>
-
-            <button
-              style={styles.primaryButton}
-              onClick={handleSaveSelectedItems}
-              disabled={savingBulk}
-            >
-              {savingBulk ? 'Salvando...' : 'Salvar itens selecionados'}
-            </button>
-          </div>
-
-          <p style={styles.selectedInfo}>
-            Itens selecionados: {selectedItemIds.length}
-          </p>
+        <div style={styles.fieldBlock}>
+          <label style={styles.fieldLabel}>Ambiente / localização</label>
+          <select
+            value={selectedLocation}
+            onChange={(e) => setSelectedLocation(e.target.value)}
+            style={styles.input}
+          >
+            {availableLocations.map((location) => (
+              <option key={location} value={location}>
+                {location === 'TODOS' ? 'Todos os ambientes' : location}
+              </option>
+            ))}
+          </select>
         </div>
-      )}
+
+        <p style={styles.selectedInfo}>
+          Itens exibidos: {pendingCount}
+        </p>
+      </div>
 
       {groupedItems.length === 0 && (
         <div style={styles.card}>
           <p style={styles.emptyText}>
             {inspection.reopenedFromPending
-              ? 'Não há itens com pendência para exibir.'
+              ? 'Não há itens com pendência para exibir neste ambiente.'
               : 'Todos os itens desta etapa já foram tratados.'}
           </p>
         </div>
@@ -704,110 +631,126 @@ export default function InspectionPage() {
           <div style={styles.itemsColumn}>
             {group.items.map((item) => {
               const draft = getDraftItem(item.id);
+              const currentStatus = draft?.status || item.status;
               const previewToShow =
                 draft?.localPreviewUrl || draft?.photoUrl || item.photoUrl || '';
+              const isNonConform = currentStatus === 'NAO_CONFORME';
+              const isSaving =
+                savingItemId === item.id || autoSavingItemId === item.id;
 
               return (
                 <div key={item.id} style={styles.itemCard}>
-                  <label style={styles.checkboxRow}>
-                    <input
-                      type="checkbox"
-                      checked={selectedItemIds.includes(item.id)}
-                      onChange={() => toggleItemSelection(item.id)}
-                    />
-                    <span>Selecionar item</span>
-                  </label>
-
-                  <h3 style={styles.itemTitle}>{item.checklistItem.itemName}</h3>
-
-                  <div style={styles.infoBlock}>
-                    <p style={styles.infoLine}>
-                      <strong>Localização:</strong> {item.checklistItem.location}
-                    </p>
-                    <p style={styles.infoLine}>
-                      <strong>Quantidade:</strong> {item.checklistItem.quantity}
-                    </p>
-                  </div>
-
-                  <div style={styles.fieldBlock}>
-                    <label style={styles.fieldLabel}>Status</label>
-                    <select
-                      value={draft?.status || item.status}
-                      onChange={(e) =>
-                        updateDraftItem(item.id, 'status', e.target.value)
-                      }
-                      style={styles.input}
-                    >
-                      <option value="PENDENTE">Pendente</option>
-                      <option value="CONFORME">Conforme</option>
-                      <option value="NAO_CONFORME">Não conforme</option>
-                    </select>
-                  </div>
-
-                  <div style={styles.fieldBlock}>
-                    <label style={styles.fieldLabel}>Observações</label>
-                    <textarea
-                      placeholder="Descreva a observação do item"
-                      value={draft?.notes || ''}
-                      onChange={(e) =>
-                        updateDraftItem(item.id, 'notes', e.target.value)
-                      }
-                      style={styles.textarea}
-                    />
-                  </div>
-
-                  <div style={styles.fieldBlock}>
-                    <label style={styles.fieldLabel}>Foto do item</label>
-
-                    <div style={styles.photoButtonsColumn}>
-                      <label style={styles.photoButton}>
-                        Tirar foto
-                        <input
-                          type="file"
-                          accept="image/*"
-                          capture="environment"
-                          onChange={(e) =>
-                            handleSelectPhoto(item.id, e.target.files[0])
-                          }
-                          style={{ display: 'none' }}
-                        />
-                      </label>
-
-                      <label style={styles.photoButtonSecondary}>
-                        Escolher da galeria
-                        <input
-                          type="file"
-                          accept="image/*"
-                          onChange={(e) =>
-                            handleSelectPhoto(item.id, e.target.files[0])
-                          }
-                          style={{ display: 'none' }}
-                        />
-                      </label>
+                  <div style={styles.itemHeader}>
+                    <div style={styles.itemInfo}>
+                      <h3 style={styles.itemTitle}>{item.checklistItem.itemName}</h3>
+                      <p style={styles.infoLine}>
+                        <strong>Quantidade:</strong> {item.checklistItem.quantity}
+                      </p>
                     </div>
 
-                    {draft?.selectedFile && (
-                      <p style={styles.fileName}>
-                        Foto selecionada: {draft.selectedFile.name}
-                      </p>
-                    )}
-
-                    {previewToShow && (
-                      <img
-                        src={previewToShow}
-                        alt="Item"
-                        style={styles.imagePreview}
-                      />
+                    {autoSavingItemId === item.id && (
+                      <span style={styles.autoSavingBadge}>Salvando...</span>
                     )}
                   </div>
 
-                  <button
-                    style={styles.primaryButton}
-                    onClick={() => handleSaveItem(item.id)}
-                    disabled={savingItemId === item.id}
-                  >
-                    {savingItemId === item.id ? 'Salvando...' : 'Salvar item'}
-                  </button>
+                  <div style={styles.statusGrid}>
+                    <button
+                      type="button"
+                      style={{
+                        ...styles.statusButton,
+                        ...(currentStatus === 'CONFORME'
+                          ? styles.statusButtonConformeActive
+                          : styles.statusButtonInactive),
+                      }}
+                      onClick={() => handleStatusChange(item.id, 'CONFORME')}
+                      disabled={isSaving}
+                    >
+                      Conforme
+                    </button>
+
+                    <button
+                      type="button"
+                      style={{
+                        ...styles.statusButton,
+                        ...(currentStatus === 'NAO_CONFORME'
+                          ? styles.statusButtonNaoConformeActive
+                          : styles.statusButtonInactive),
+                      }}
+                      onClick={() => handleStatusChange(item.id, 'NAO_CONFORME')}
+                      disabled={isSaving}
+                    >
+                      Não conforme
+                    </button>
+                  </div>
+
+                  {isNonConform && (
+                    <div style={styles.nonConformBlock}>
+                      <div style={styles.fieldBlock}>
+                        <label style={styles.fieldLabel}>Observação</label>
+                        <textarea
+                          placeholder="Descreva o problema encontrado"
+                          value={draft?.notes || ''}
+                          onChange={(e) =>
+                            updateDraftItem(item.id, 'notes', e.target.value)
+                          }
+                          style={styles.textarea}
+                        />
+                      </div>
+
+                      <div style={styles.fieldBlock}>
+                        <label style={styles.fieldLabel}>Foto do item</label>
+
+                        <div style={styles.photoButtonsColumn}>
+                          <label style={styles.photoButton}>
+                            Tirar foto
+                            <input
+                              type="file"
+                              accept="image/*"
+                              capture="environment"
+                              onChange={(e) =>
+                                handleSelectPhoto(item.id, e.target.files?.[0])
+                              }
+                              style={{ display: 'none' }}
+                            />
+                          </label>
+
+                          <label style={styles.photoButtonSecondary}>
+                            Escolher da galeria
+                            <input
+                              type="file"
+                              accept="image/*"
+                              onChange={(e) =>
+                                handleSelectPhoto(item.id, e.target.files?.[0])
+                              }
+                              style={{ display: 'none' }}
+                            />
+                          </label>
+                        </div>
+
+                        {draft?.selectedFile && (
+                          <p style={styles.fileName}>
+                            Foto selecionada: {draft.selectedFile.name}
+                          </p>
+                        )}
+
+                        {previewToShow && (
+                          <img
+                            src={previewToShow}
+                            alt="Item"
+                            style={styles.imagePreview}
+                          />
+                        )}
+                      </div>
+
+                      <button
+                        style={styles.primaryButton}
+                        onClick={() => handleSaveItem(item.id)}
+                        disabled={savingItemId === item.id}
+                      >
+                        {savingItemId === item.id ? 'Salvando...' : 'Salvar item'}
+                      </button>
+                    </div>
+                  )}
                 </div>
               );
             })}
@@ -971,19 +914,24 @@ const styles = {
     marginBottom: '12px',
     color: '#0f172a',
   },
-  checkboxRow: {
-    display: 'flex',
-    alignItems: 'center',
-    gap: '10px',
-    fontWeight: '600',
-    fontSize: '1rem',
-    color: '#0f172a',
-    marginBottom: '12px',
+  fieldBlock: {
+    marginBottom: '14px',
   },
-  bulkColumn: {
-    display: 'flex',
-    flexDirection: 'column',
-    gap: '10px',
+  fieldLabel: {
+    display: 'block',
+    fontWeight: '700',
+    marginBottom: '8px',
+    color: '#0f172a',
+  },
+  input: {
+    width: '100%',
+    minHeight: '48px',
+    borderRadius: '14px',
+    border: '1px solid #cbd5e1',
+    padding: '12px 14px',
+    fontSize: '1rem',
+    background: '#ffffff',
+    color: '#111827',
   },
   selectedInfo: {
     marginTop: '10px',
@@ -1009,41 +957,69 @@ const styles = {
     borderRadius: '18px',
     padding: '16px',
     boxShadow: '0 6px 20px rgba(0,0,0,0.08)',
+    border: '1px solid #e5e7eb',
+  },
+  itemHeader: {
+    display: 'flex',
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
+    gap: '12px',
+    marginBottom: '12px',
+  },
+  itemInfo: {
+    flex: 1,
   },
   itemTitle: {
-    fontSize: '1.45rem',
+    fontSize: '1.2rem',
     lineHeight: 1.2,
-    marginBottom: '12px',
+    marginBottom: '10px',
     color: '#0f172a',
-  },
-  infoBlock: {
-    display: 'flex',
-    flexDirection: 'column',
-    gap: '8px',
-    marginBottom: '14px',
   },
   infoLine: {
     color: '#334155',
     fontSize: '1rem',
   },
-  fieldBlock: {
-    marginBottom: '14px',
-  },
-  fieldLabel: {
-    display: 'block',
+  autoSavingBadge: {
+    background: '#dbeafe',
+    color: '#1d4ed8',
+    padding: '6px 10px',
+    borderRadius: '999px',
+    fontSize: '0.85rem',
     fontWeight: '700',
-    marginBottom: '8px',
-    color: '#0f172a',
+    whiteSpace: 'nowrap',
   },
-  input: {
-    width: '100%',
+  statusGrid: {
+    display: 'grid',
+    gridTemplateColumns: '1fr 1fr',
+    gap: '10px',
+  },
+  statusButton: {
     minHeight: '48px',
     borderRadius: '14px',
     border: '1px solid #cbd5e1',
-    padding: '12px 14px',
+    fontWeight: '700',
     fontSize: '1rem',
+    padding: '12px 14px',
+    cursor: 'pointer',
+  },
+  statusButtonInactive: {
     background: '#ffffff',
-    color: '#111827',
+    color: '#334155',
+  },
+  statusButtonConformeActive: {
+    background: '#16a34a',
+    color: '#ffffff',
+    border: '1px solid #16a34a',
+  },
+  statusButtonNaoConformeActive: {
+    background: '#dc2626',
+    color: '#ffffff',
+    border: '1px solid #dc2626',
+  },
+  nonConformBlock: {
+    marginTop: '14px',
+    paddingTop: '14px',
+    borderTop: '1px solid #e5e7eb',
   },
   textarea: {
     width: '100%',
