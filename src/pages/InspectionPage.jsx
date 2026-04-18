@@ -122,8 +122,9 @@ export default function InspectionPage() {
   const [inspection, setInspection] = useState(null);
   const [draftItems, setDraftItems] = useState([]);
   const [savingItemId, setSavingItemId] = useState(null);
-  const [autoSavingItemId, setAutoSavingItemId] = useState(null);
   const [finishing, setFinishing] = useState(false);
+  const [selectedItemIds, setSelectedItemIds] = useState([]);
+  const [savingBulk, setSavingBulk] = useState(false);
   const [savedItemIds, setSavedItemIds] = useState([]);
   const [selectedLocation, setSelectedLocation] = useState('TODOS');
   const [inspectorPreview, setInspectorPreview] = useState('');
@@ -137,6 +138,16 @@ export default function InspectionPage() {
   useEffect(() => {
     loadInspection();
   }, [id]);
+
+  useEffect(() => {
+    return () => {
+      draftItems.forEach((item) => {
+        if (item.localPreviewUrl) {
+          URL.revokeObjectURL(item.localPreviewUrl);
+        }
+      });
+    };
+  }, [draftItems]);
 
   async function loadInspection() {
     try {
@@ -173,6 +184,9 @@ export default function InspectionPage() {
         }))
       );
 
+      setSelectedItemIds([]);
+      setSelectedLocation('TODOS');
+
       if (inspectionData.reopenedFromPending) {
         setSavedItemIds(
           sortedItems
@@ -189,15 +203,10 @@ export default function InspectionPage() {
 
       setInspectorPreview(inspectionData.inspectorSignature || '');
       setClientPreview(inspectionData.clientSignature || '');
-      setSelectedLocation('TODOS');
     } catch (error) {
       console.error(error);
       alert('Erro ao carregar vistoria.');
     }
-  }
-
-  function getDraftItem(itemId) {
-    return draftItems.find((item) => item.id === itemId);
   }
 
   function updateDraftItem(itemId, field, value) {
@@ -205,6 +214,82 @@ export default function InspectionPage() {
       prev.map((item) =>
         item.id === itemId ? { ...item, [field]: value } : item
       )
+    );
+  }
+
+  function getDraftItem(itemId) {
+    return draftItems.find((item) => item.id === itemId);
+  }
+
+  function handleStatusChange(itemId, status) {
+    setDraftItems((prev) =>
+      prev.map((item) => {
+        if (item.id !== itemId) return item;
+
+        if (status === 'CONFORME') {
+          if (item.localPreviewUrl) {
+            URL.revokeObjectURL(item.localPreviewUrl);
+          }
+
+          return {
+            ...item,
+            status,
+            notes: '',
+            photoUrl: '',
+            selectedFile: null,
+            localPreviewUrl: '',
+          };
+        }
+
+        return {
+          ...item,
+          status,
+        };
+      })
+    );
+  }
+
+  function toggleItemSelection(itemId) {
+    setSelectedItemIds((prev) =>
+      prev.includes(itemId)
+        ? prev.filter((currentId) => currentId !== itemId)
+        : [...prev, itemId]
+    );
+  }
+
+  function toggleSelectAllVisibleItems(checked, itemsToSelect) {
+    if (checked) {
+      const visibleIds = itemsToSelect.map((item) => item.id);
+      setSelectedItemIds(visibleIds);
+      return;
+    }
+
+    setSelectedItemIds([]);
+  }
+
+  function markSelectedAsConforme() {
+    if (selectedItemIds.length === 0) {
+      alert('Selecione ao menos um item.');
+      return;
+    }
+
+    setDraftItems((prev) =>
+      prev.map((item) => {
+        if (!selectedItemIds.includes(item.id)) return item;
+
+        if (item.localPreviewUrl) {
+          URL.revokeObjectURL(item.localPreviewUrl);
+        }
+
+        return {
+          ...item,
+          status: 'CONFORME',
+          notes: '',
+          photoUrl: '',
+          selectedFile: null,
+          localPreviewUrl: '',
+        };
+      })
     );
   }
 
@@ -240,59 +325,58 @@ export default function InspectionPage() {
     return draft.photoUrl || '';
   }
 
-  async function saveItemData(itemId, customDraft = null) {
-    const draft = customDraft || getDraftItem(itemId);
-    if (!draft) throw new Error('Item não encontrado para salvar.');
-
-    const finalPhotoUrl = await resolveFinalPhotoValue(draft);
-
-    await api.put(`/inspections/item/${itemId}`, {
-      status: draft.status,
-      notes: draft.notes,
-      photoUrl: finalPhotoUrl,
-    });
-
-    setInspection((prev) => ({
-      ...prev,
-      items: prev.items.map((item) =>
-        item.id === itemId
-          ? {
-              ...item,
-              status: draft.status,
-              notes: draft.notes,
-              photoUrl: finalPhotoUrl,
-            }
-          : item
-      ),
-    }));
-
-    setDraftItems((prev) =>
-      prev.map((item) => {
-        if (item.id !== itemId) return item;
-
-        if (item.localPreviewUrl) {
-          URL.revokeObjectURL(item.localPreviewUrl);
-        }
-
-        return {
-          ...item,
-          status: draft.status,
-          notes: draft.notes,
-          photoUrl: finalPhotoUrl,
-          selectedFile: null,
-          localPreviewUrl: '',
-        };
-      })
-    );
-
-    setSavedItemIds((prev) => [...new Set([...prev, itemId])]);
-  }
-
   async function handleSaveItem(itemId) {
     try {
       setSavingItemId(itemId);
-      await saveItemData(itemId);
-      alert('Item salvo com sucesso.');
+
+      const draft = getDraftItem(itemId);
+      if (!draft) throw new Error('Item não encontrado para salvar.');
+
+      const finalPhotoUrl = await resolveFinalPhotoValue(draft);
+
+      await api.put(`/inspections/item/${itemId}`, {
+        status: draft.status,
+        notes: draft.notes,
+        photoUrl: finalPhotoUrl,
+      });
+
+      setInspection((prev) => ({
+        ...prev,
+        items: prev.items.map((item) =>
+          item.id === itemId
+            ? {
+                ...item,
+                status: draft.status,
+                notes: draft.notes,
+                photoUrl: finalPhotoUrl,
+              }
+            : item
+        ),
+      }));
+
+      setDraftItems((prev) =>
+        prev.map((item) => {
+          if (item.id !== itemId) return item;
+
+          if (item.localPreviewUrl) {
+            URL.revokeObjectURL(item.localPreviewUrl);
+          }
+
+          return {
+            ...item,
+            status: draft.status,
+            notes: draft.notes,
+            photoUrl: finalPhotoUrl,
+            selectedFile: null,
+            localPreviewUrl: '',
+          };
+        })
+      );
+
+      setSavedItemIds((prev) => [...new Set([...prev, itemId])]);
+      setSelectedItemIds((prev) =>
+        prev.filter((currentId) => currentId !== itemId)
+      );
     } catch (error) {
       console.error(error);
       alert(
@@ -305,42 +389,74 @@ export default function InspectionPage() {
     }
   }
 
-  async function handleStatusChange(itemId, newStatus) {
-    const currentDraft = getDraftItem(itemId);
-    if (!currentDraft) return;
-
-    const updatedDraft = {
-      ...currentDraft,
-      status: newStatus,
-      notes: newStatus === 'NAO_CONFORME' ? currentDraft.notes : '',
-      photoUrl: newStatus === 'NAO_CONFORME' ? currentDraft.photoUrl : '',
-      selectedFile: newStatus === 'NAO_CONFORME' ? currentDraft.selectedFile : null,
-      localPreviewUrl:
-        newStatus === 'NAO_CONFORME' ? currentDraft.localPreviewUrl : '',
-    };
-
-    if (newStatus !== 'NAO_CONFORME' && currentDraft.localPreviewUrl) {
-      URL.revokeObjectURL(currentDraft.localPreviewUrl);
-    }
-
-    setDraftItems((prev) =>
-      prev.map((item) => (item.id === itemId ? updatedDraft : item))
-    );
-
-    if (newStatus === 'CONFORME') {
-      try {
-        setAutoSavingItemId(itemId);
-        await saveItemData(itemId, updatedDraft);
-      } catch (error) {
-        console.error(error);
-        alert(
-          error.response?.data?.error ||
-            error.response?.data?.message ||
-            'Erro ao salvar item como conforme.'
-        );
-      } finally {
-        setAutoSavingItemId(null);
+  async function handleSaveSelectedItems() {
+    try {
+      if (selectedItemIds.length === 0) {
+        alert('Selecione ao menos um item.');
+        return;
       }
+
+      setSavingBulk(true);
+
+      for (const itemId of selectedItemIds) {
+        const draft = getDraftItem(itemId);
+        if (!draft) continue;
+
+        const finalPhotoUrl = await resolveFinalPhotoValue(draft);
+
+        await api.put(`/inspections/item/${itemId}`, {
+          status: draft.status,
+          notes: draft.notes,
+          photoUrl: finalPhotoUrl,
+        });
+
+        setInspection((prev) => ({
+          ...prev,
+          items: prev.items.map((item) =>
+            item.id === itemId
+              ? {
+                  ...item,
+                  status: draft.status,
+                  notes: draft.notes,
+                  photoUrl: finalPhotoUrl,
+                }
+              : item
+          ),
+        }));
+
+        setDraftItems((prev) =>
+          prev.map((item) => {
+            if (item.id !== itemId) return item;
+
+            if (item.localPreviewUrl) {
+              URL.revokeObjectURL(item.localPreviewUrl);
+            }
+
+            return {
+              ...item,
+              status: draft.status,
+              notes: draft.notes,
+              photoUrl: finalPhotoUrl,
+              selectedFile: null,
+              localPreviewUrl: '',
+            };
+          })
+        );
+
+        setSavedItemIds((prev) => [...new Set([...prev, itemId])]);
+      }
+
+      setSelectedItemIds([]);
+      alert('Itens selecionados salvos com sucesso.');
+    } catch (error) {
+      console.error(error);
+      alert(
+        error.response?.data?.error ||
+          error.response?.data?.message ||
+          'Erro ao salvar itens selecionados.'
+      );
+    } finally {
+      setSavingBulk(false);
     }
   }
 
@@ -485,7 +601,7 @@ export default function InspectionPage() {
     setPreview('');
   }
 
-  const visibleItems = useMemo(() => {
+  const baseVisibleItems = useMemo(() => {
     if (!inspection) return [];
 
     if (inspection.reopenedFromPending) {
@@ -500,36 +616,35 @@ export default function InspectionPage() {
     );
   }, [inspection, savedItemIds]);
 
-  const availableLocations = useMemo(() => {
-    const locations = [
+  const locations = useMemo(() => {
+    const uniqueLocations = [
       ...new Set(
-        visibleItems.map((item) => item.checklistItem.location || 'Sem localização')
+        baseVisibleItems.map(
+          (item) => item.checklistItem.location || 'Sem localização'
+        )
       ),
     ].sort((a, b) => a.localeCompare(b, 'pt-BR'));
 
-    return ['TODOS', ...locations];
-  }, [visibleItems]);
+    return ['TODOS', ...uniqueLocations];
+  }, [baseVisibleItems]);
 
-  const filteredVisibleItems = useMemo(() => {
+  const visibleItems = useMemo(() => {
     if (selectedLocation === 'TODOS') {
-      return visibleItems;
+      return baseVisibleItems;
     }
 
-    return visibleItems.filter(
-      (item) => (item.checklistItem.location || 'Sem localização') === selectedLocation
+    return baseVisibleItems.filter(
+      (item) =>
+        (item.checklistItem.location || 'Sem localização') === selectedLocation
     );
-  }, [visibleItems, selectedLocation]);
+  }, [baseVisibleItems, selectedLocation]);
 
   const groupedItems = useMemo(() => {
     const groups = {};
 
-    filteredVisibleItems.forEach((item) => {
+    visibleItems.forEach((item) => {
       const location = item.checklistItem.location || 'Sem localização';
-
-      if (!groups[location]) {
-        groups[location] = [];
-      }
-
+      if (!groups[location]) groups[location] = [];
       groups[location].push(item);
     });
 
@@ -539,9 +654,11 @@ export default function InspectionPage() {
         location,
         items: groups[location],
       }));
-  }, [filteredVisibleItems]);
+  }, [visibleItems]);
 
-  const pendingCount = filteredVisibleItems.length;
+  const allVisibleSelected =
+    visibleItems.length > 0 &&
+    visibleItems.every((item) => selectedItemIds.includes(item.id));
 
   if (!inspection) {
     return (
@@ -560,15 +677,12 @@ export default function InspectionPage() {
           <h1 style={styles.title}>
             {inspection.apartment.enterprise.name} - Apto {inspection.apartment.number}
           </h1>
-
           <p style={styles.metaText}>
             <strong>Responsável:</strong> {inspection.user.name}
           </p>
-
           <p style={styles.metaText}>
             <strong>Status da vistoria:</strong> {inspection.status}
           </p>
-
           {inspection.reopenedFromPending && (
             <p style={styles.reviewText}>
               Modo de revisão: exibindo apenas itens com pendência.
@@ -591,34 +705,73 @@ export default function InspectionPage() {
         </div>
       </div>
 
-      <div style={styles.card}>
-        <h2 style={styles.sectionTitle}>Filtrar itens</h2>
+      {baseVisibleItems.length > 0 && (
+        <>
+          <div style={styles.card}>
+            <h2 style={styles.sectionTitle}>Filtro</h2>
 
-        <div style={styles.fieldBlock}>
-          <label style={styles.fieldLabel}>Ambiente / localização</label>
-          <select
-            value={selectedLocation}
-            onChange={(e) => setSelectedLocation(e.target.value)}
-            style={styles.input}
-          >
-            {availableLocations.map((location) => (
-              <option key={location} value={location}>
-                {location === 'TODOS' ? 'Todos os ambientes' : location}
-              </option>
-            ))}
-          </select>
-        </div>
+            <div style={styles.fieldBlock}>
+              <label style={styles.fieldLabel}>Filtrar por ambiente</label>
+              <select
+                value={selectedLocation}
+                onChange={(e) => {
+                  setSelectedLocation(e.target.value);
+                  setSelectedItemIds([]);
+                }}
+                style={styles.input}
+              >
+                {locations.map((location) => (
+                  <option key={location} value={location}>
+                    {location}
+                  </option>
+                ))}
+              </select>
+            </div>
+          </div>
 
-        <p style={styles.selectedInfo}>
-          Itens exibidos: {pendingCount}
-        </p>
-      </div>
+          <div style={styles.card}>
+            <h2 style={styles.sectionTitle}>Ações em massa</h2>
+
+            <label style={styles.checkboxRow}>
+              <input
+                type="checkbox"
+                checked={allVisibleSelected}
+                onChange={(e) =>
+                  toggleSelectAllVisibleItems(e.target.checked, visibleItems)
+                }
+              />
+              <span>Selecionar todos os itens visíveis</span>
+            </label>
+
+            <div style={styles.bulkColumn}>
+              <button
+                style={styles.secondaryButton}
+                onClick={markSelectedAsConforme}
+              >
+                Marcar selecionados como conforme
+              </button>
+
+              <button
+                style={styles.primaryButton}
+                onClick={handleSaveSelectedItems}
+                disabled={savingBulk}
+              >
+                {savingBulk ? 'Salvando...' : 'Salvar itens selecionados'}
+              </button>
+            </div>
+
+            <p style={styles.selectedInfo}>
+              Itens visíveis: {visibleItems.length} | Selecionados: {selectedItemIds.length}
+            </p>
+          </div>
+        </>
+      )}
 
       {groupedItems.length === 0 && (
         <div style={styles.card}>
           <p style={styles.emptyText}>
             {inspection.reopenedFromPending
-              ? 'Não há itens com pendência para exibir neste ambiente.'
+              ? 'Não há itens com pendência para exibir.'
               : 'Todos os itens desta etapa já foram tratados.'}
           </p>
         </div>
@@ -634,61 +787,71 @@ export default function InspectionPage() {
               const currentStatus = draft?.status || item.status;
               const previewToShow =
                 draft?.localPreviewUrl || draft?.photoUrl || item.photoUrl || '';
-              const isNonConform = currentStatus === 'NAO_CONFORME';
-              const isSaving =
-                savingItemId === item.id || autoSavingItemId === item.id;
+              const isNaoConforme = currentStatus === 'NAO_CONFORME';
 
               return (
                 <div key={item.id} style={styles.itemCard}>
-                  <div style={styles.itemHeader}>
-                    <div style={styles.itemInfo}>
-                      <h3 style={styles.itemTitle}>{item.checklistItem.itemName}</h3>
-                      <p style={styles.infoLine}>
-                        <strong>Quantidade:</strong> {item.checklistItem.quantity}
-                      </p>
-                    </div>
-
-                    {autoSavingItemId === item.id && (
-                      <span style={styles.autoSavingBadge}>Salvando...</span>
-                    )}
+                  <div style={styles.itemTopRow}>
+                    <label style={styles.checkboxRowNoMargin}>
+                      <input
+                        type="checkbox"
+                        checked={selectedItemIds.includes(item.id)}
+                        onChange={() => toggleItemSelection(item.id)}
+                      />
+                      <span>Selecionar</span>
+                    </label>
                   </div>
 
-                  <div style={styles.statusGrid}>
+                  <h3 style={styles.itemTitle}>{item.checklistItem.itemName}</h3>
+
+                  <div style={styles.infoCompactRow}>
+                    <p style={styles.infoBadge}>
+                      <strong>Qtd:</strong> {item.checklistItem.quantity}
+                    </p>
+                    <p style={styles.infoBadge}>
+                      <strong>Status:</strong>{' '}
+                      {currentStatus === 'PENDENTE'
+                        ? 'Pendente'
+                        : currentStatus === 'CONFORME'
+                        ? 'Conforme'
+                        : 'Não conforme'}
+                    </p>
+                  </div>
+
+                  <div style={styles.statusButtonRow}>
                     <button
                       type="button"
+                      onClick={() => handleStatusChange(item.id, 'CONFORME')}
                       style={{
                         ...styles.statusButton,
                         ...(currentStatus === 'CONFORME'
-                          ? styles.statusButtonConformeActive
+                          ? styles.statusButtonActiveConforme
                           : styles.statusButtonInactive),
                       }}
-                      onClick={() => handleStatusChange(item.id, 'CONFORME')}
-                      disabled={isSaving}
                     >
                       Conforme
                     </button>
 
                     <button
                       type="button"
+                      onClick={() => handleStatusChange(item.id, 'NAO_CONFORME')}
                       style={{
                         ...styles.statusButton,
                         ...(currentStatus === 'NAO_CONFORME'
-                          ? styles.statusButtonNaoConformeActive
+                          ? styles.statusButtonActiveNaoConforme
                           : styles.statusButtonInactive),
                       }}
-                      onClick={() => handleStatusChange(item.id, 'NAO_CONFORME')}
-                      disabled={isSaving}
                     >
                       Não conforme
                     </button>
                   </div>
 
-                  {isNonConform && (
-                    <div style={styles.nonConformBlock}>
+                  {isNaoConforme && (
+                    <>
                       <div style={styles.fieldBlock}>
-                        <label style={styles.fieldLabel}>Observação</label>
+                        <label style={styles.fieldLabel}>Observações</label>
                         <textarea
-                          placeholder="Descreva o problema encontrado"
+                          placeholder="Descreva a observação do item"
                           value={draft?.notes || ''}
                           onChange={(e) =>
                             updateDraftItem(item.id, 'notes', e.target.value)
@@ -708,7 +871,7 @@ export default function InspectionPage() {
                               accept="image/*"
                               capture="environment"
                               onChange={(e) =>
-                                handleSelectPhoto(item.id, e.target.files?.[0])
+                                handleSelectPhoto(item.id, e.target.files[0])
                               }
                               style={{ display: 'none' }}
                             />
@@ -720,7 +883,7 @@ export default function InspectionPage() {
                               type="file"
                               accept="image/*"
                               onChange={(e) =>
-                                handleSelectPhoto(item.id, e.target.files?.[0])
+                                handleSelectPhoto(item.id, e.target.files[0])
                               }
                               style={{ display: 'none' }}
                             />
@@ -749,7 +912,7 @@ export default function InspectionPage() {
                       >
                         {savingItemId === item.id ? 'Salvando...' : 'Salvar item'}
                       </button>
-                    </div>
+                    </>
                   )}
                 </div>
               );
@@ -914,24 +1077,28 @@ const styles = {
     marginBottom: '12px',
     color: '#0f172a',
   },
-  fieldBlock: {
-    marginBottom: '14px',
-  },
-  fieldLabel: {
-    display: 'block',
-    fontWeight: '700',
-    marginBottom: '8px',
-    color: '#0f172a',
-  },
-  input: {
-    width: '100%',
-    minHeight: '48px',
-    borderRadius: '14px',
-    border: '1px solid #cbd5e1',
-    padding: '12px 14px',
+  checkboxRow: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '10px',
+    fontWeight: '600',
     fontSize: '1rem',
-    background: '#ffffff',
-    color: '#111827',
+    color: '#0f172a',
+    marginBottom: '12px',
+  },
+  checkboxRowNoMargin: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '10px',
+    fontWeight: '600',
+    fontSize: '0.95rem',
+    color: '#0f172a',
+    margin: 0,
+  },
+  bulkColumn: {
+    display: 'flex',
+    flexDirection: 'column',
+    gap: '10px',
   },
   selectedInfo: {
     marginTop: '10px',
@@ -957,69 +1124,79 @@ const styles = {
     borderRadius: '18px',
     padding: '16px',
     boxShadow: '0 6px 20px rgba(0,0,0,0.08)',
-    border: '1px solid #e5e7eb',
   },
-  itemHeader: {
+  itemTopRow: {
     display: 'flex',
     justifyContent: 'space-between',
-    alignItems: 'flex-start',
-    gap: '12px',
-    marginBottom: '12px',
-  },
-  itemInfo: {
-    flex: 1,
+    alignItems: 'center',
+    marginBottom: '8px',
   },
   itemTitle: {
-    fontSize: '1.2rem',
-    lineHeight: 1.2,
-    marginBottom: '10px',
+    fontSize: '1.25rem',
+    lineHeight: 1.25,
+    marginBottom: '12px',
     color: '#0f172a',
   },
-  infoLine: {
-    color: '#334155',
-    fontSize: '1rem',
+  infoCompactRow: {
+    display: 'flex',
+    flexWrap: 'wrap',
+    gap: '8px',
+    marginBottom: '14px',
   },
-  autoSavingBadge: {
-    background: '#dbeafe',
-    color: '#1d4ed8',
-    padding: '6px 10px',
+  infoBadge: {
+    background: '#f8fafc',
+    border: '1px solid #e2e8f0',
     borderRadius: '999px',
-    fontSize: '0.85rem',
-    fontWeight: '700',
-    whiteSpace: 'nowrap',
+    padding: '8px 12px',
+    color: '#334155',
+    fontSize: '0.95rem',
+    margin: 0,
   },
-  statusGrid: {
+  fieldBlock: {
+    marginBottom: '14px',
+  },
+  fieldLabel: {
+    display: 'block',
+    fontWeight: '700',
+    marginBottom: '8px',
+    color: '#0f172a',
+  },
+  input: {
+    width: '100%',
+    minHeight: '48px',
+    borderRadius: '14px',
+    border: '1px solid #cbd5e1',
+    padding: '12px 14px',
+    fontSize: '1rem',
+    background: '#ffffff',
+    color: '#111827',
+  },
+  statusButtonRow: {
     display: 'grid',
     gridTemplateColumns: '1fr 1fr',
     gap: '10px',
+    marginBottom: '14px',
   },
   statusButton: {
     minHeight: '48px',
     borderRadius: '14px',
-    border: '1px solid #cbd5e1',
+    border: 'none',
     fontWeight: '700',
-    fontSize: '1rem',
-    padding: '12px 14px',
+    fontSize: '0.98rem',
+    padding: '12px 16px',
     cursor: 'pointer',
   },
   statusButtonInactive: {
-    background: '#ffffff',
-    color: '#334155',
+    background: '#e2e8f0',
+    color: '#0f172a',
   },
-  statusButtonConformeActive: {
+  statusButtonActiveConforme: {
     background: '#16a34a',
     color: '#ffffff',
-    border: '1px solid #16a34a',
   },
-  statusButtonNaoConformeActive: {
+  statusButtonActiveNaoConforme: {
     background: '#dc2626',
     color: '#ffffff',
-    border: '1px solid #dc2626',
-  },
-  nonConformBlock: {
-    marginTop: '14px',
-    paddingTop: '14px',
-    borderTop: '1px solid #e5e7eb',
   },
   textarea: {
     width: '100%',
