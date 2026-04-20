@@ -221,31 +221,136 @@ export default function InspectionPage() {
     return draftItems.find((item) => item.id === itemId);
   }
 
-  function handleStatusChange(itemId, status) {
+  function updateInspectionAndDraftAfterSave(itemId, draft, finalPhotoUrl) {
+    setInspection((prev) => ({
+      ...prev,
+      items: prev.items.map((item) =>
+        item.id === itemId
+          ? {
+              ...item,
+              status: draft.status,
+              notes: draft.notes,
+              photoUrl: finalPhotoUrl,
+            }
+          : item
+      ),
+    }));
+
     setDraftItems((prev) =>
       prev.map((item) => {
         if (item.id !== itemId) return item;
 
-        if (status === 'CONFORME') {
-          if (item.localPreviewUrl) {
-            URL.revokeObjectURL(item.localPreviewUrl);
-          }
-
-          return {
-            ...item,
-            status,
-            notes: '',
-            photoUrl: '',
-            selectedFile: null,
-            localPreviewUrl: '',
-          };
+        if (item.localPreviewUrl) {
+          URL.revokeObjectURL(item.localPreviewUrl);
         }
 
         return {
           ...item,
-          status,
+          status: draft.status,
+          notes: draft.notes,
+          photoUrl: finalPhotoUrl,
+          selectedFile: null,
+          localPreviewUrl: '',
         };
       })
+    );
+
+    setSavedItemIds((prev) => [...new Set([...prev, itemId])]);
+    setSelectedItemIds((prev) =>
+      prev.filter((currentId) => currentId !== itemId)
+    );
+  }
+
+  async function resolveFinalPhotoValue(draft) {
+    if (!draft) return '';
+
+    if (draft.selectedFile) {
+      return compressImageToDataUrl(draft.selectedFile);
+    }
+
+    return draft.photoUrl || '';
+  }
+
+  async function persistItem(itemId, customDraft = null) {
+    const draft = customDraft || getDraftItem(itemId);
+
+    if (!draft) {
+      throw new Error('Item não encontrado para salvar.');
+    }
+
+    const finalPhotoUrl = await resolveFinalPhotoValue(draft);
+
+    await api.put(`/inspections/item/${itemId}`, {
+      status: draft.status,
+      notes: draft.notes,
+      photoUrl: finalPhotoUrl,
+    });
+
+    updateInspectionAndDraftAfterSave(itemId, draft, finalPhotoUrl);
+  }
+
+  async function handleStatusChange(itemId, status) {
+    if (savingItemId || savingBulk) {
+      return;
+    }
+
+    if (status === 'CONFORME') {
+      const currentDraft = getDraftItem(itemId);
+
+      if (!currentDraft) {
+        return;
+      }
+
+      const nextDraft = {
+        ...currentDraft,
+        status: 'CONFORME',
+        notes: '',
+        photoUrl: '',
+        selectedFile: null,
+        localPreviewUrl: '',
+      };
+
+      try {
+        setSavingItemId(itemId);
+
+        setDraftItems((prev) =>
+          prev.map((item) => {
+            if (item.id !== itemId) return item;
+
+            if (item.localPreviewUrl) {
+              URL.revokeObjectURL(item.localPreviewUrl);
+            }
+
+            return nextDraft;
+          })
+        );
+
+        await persistItem(itemId, nextDraft);
+      } catch (error) {
+        console.error(error);
+        alert(
+          error.response?.data?.error ||
+            error.response?.data?.message ||
+            'Erro ao salvar item como conforme.'
+        );
+
+        await loadInspection();
+      } finally {
+        setSavingItemId(null);
+      }
+
+      return;
+    }
+
+    setDraftItems((prev) =>
+      prev.map((item) =>
+        item.id === itemId
+          ? {
+              ...item,
+              status: 'NAO_CONFORME',
+            }
+          : item
+      )
     );
   }
 
@@ -315,68 +420,10 @@ export default function InspectionPage() {
     );
   }
 
-  async function resolveFinalPhotoValue(draft) {
-    if (!draft) return '';
-
-    if (draft.selectedFile) {
-      return compressImageToDataUrl(draft.selectedFile);
-    }
-
-    return draft.photoUrl || '';
-  }
-
   async function handleSaveItem(itemId) {
     try {
       setSavingItemId(itemId);
-
-      const draft = getDraftItem(itemId);
-      if (!draft) throw new Error('Item não encontrado para salvar.');
-
-      const finalPhotoUrl = await resolveFinalPhotoValue(draft);
-
-      await api.put(`/inspections/item/${itemId}`, {
-        status: draft.status,
-        notes: draft.notes,
-        photoUrl: finalPhotoUrl,
-      });
-
-      setInspection((prev) => ({
-        ...prev,
-        items: prev.items.map((item) =>
-          item.id === itemId
-            ? {
-                ...item,
-                status: draft.status,
-                notes: draft.notes,
-                photoUrl: finalPhotoUrl,
-              }
-            : item
-        ),
-      }));
-
-      setDraftItems((prev) =>
-        prev.map((item) => {
-          if (item.id !== itemId) return item;
-
-          if (item.localPreviewUrl) {
-            URL.revokeObjectURL(item.localPreviewUrl);
-          }
-
-          return {
-            ...item,
-            status: draft.status,
-            notes: draft.notes,
-            photoUrl: finalPhotoUrl,
-            selectedFile: null,
-            localPreviewUrl: '',
-          };
-        })
-      );
-
-      setSavedItemIds((prev) => [...new Set([...prev, itemId])]);
-      setSelectedItemIds((prev) =>
-        prev.filter((currentId) => currentId !== itemId)
-      );
+      await persistItem(itemId);
     } catch (error) {
       console.error(error);
       alert(
@@ -402,48 +449,7 @@ export default function InspectionPage() {
         const draft = getDraftItem(itemId);
         if (!draft) continue;
 
-        const finalPhotoUrl = await resolveFinalPhotoValue(draft);
-
-        await api.put(`/inspections/item/${itemId}`, {
-          status: draft.status,
-          notes: draft.notes,
-          photoUrl: finalPhotoUrl,
-        });
-
-        setInspection((prev) => ({
-          ...prev,
-          items: prev.items.map((item) =>
-            item.id === itemId
-              ? {
-                  ...item,
-                  status: draft.status,
-                  notes: draft.notes,
-                  photoUrl: finalPhotoUrl,
-                }
-              : item
-          ),
-        }));
-
-        setDraftItems((prev) =>
-          prev.map((item) => {
-            if (item.id !== itemId) return item;
-
-            if (item.localPreviewUrl) {
-              URL.revokeObjectURL(item.localPreviewUrl);
-            }
-
-            return {
-              ...item,
-              status: draft.status,
-              notes: draft.notes,
-              photoUrl: finalPhotoUrl,
-              selectedFile: null,
-              localPreviewUrl: '',
-            };
-          })
-        );
-
-        setSavedItemIds((prev) => [...new Set([...prev, itemId])]);
+        await persistItem(itemId, draft);
       }
 
       setSelectedItemIds([]);
@@ -660,6 +666,9 @@ export default function InspectionPage() {
     visibleItems.length > 0 &&
     visibleItems.every((item) => selectedItemIds.includes(item.id));
 
+  const isReadOnlyFinishedWithoutPending =
+    inspection?.status === 'CONCLUIDA' && !inspection?.reopenedFromPending;
+
   if (!inspection) {
     return (
       <div style={styles.page}>
@@ -688,6 +697,11 @@ export default function InspectionPage() {
               Modo de revisão: exibindo apenas itens com pendência.
             </p>
           )}
+          {isReadOnlyFinishedWithoutPending && (
+            <p style={styles.successNotice}>
+              Esta vistoria já foi concluída e está sendo exibida para consulta e geração de relatório.
+            </p>
+          )}
         </div>
 
         <div style={styles.headerButtons}>
@@ -695,17 +709,19 @@ export default function InspectionPage() {
             Gerar relatório PDF
           </button>
 
-          <button
-            style={styles.primaryButton}
-            onClick={handleFinishInspection}
-            disabled={finishing}
-          >
-            {finishing ? 'Finalizando...' : 'Finalizar vistoria'}
-          </button>
+          {!isReadOnlyFinishedWithoutPending && (
+            <button
+              style={styles.primaryButton}
+              onClick={handleFinishInspection}
+              disabled={finishing}
+            >
+              {finishing ? 'Finalizando...' : 'Finalizar vistoria'}
+            </button>
+          )}
         </div>
       </div>
 
-      {baseVisibleItems.length > 0 && (
+      {baseVisibleItems.length > 0 && !isReadOnlyFinishedWithoutPending && (
         <>
           <div style={styles.card}>
             <h2 style={styles.sectionTitle}>Filtro</h2>
@@ -770,156 +786,167 @@ export default function InspectionPage() {
       {groupedItems.length === 0 && (
         <div style={styles.card}>
           <p style={styles.emptyText}>
-            {inspection.reopenedFromPending
+            {isReadOnlyFinishedWithoutPending
+              ? 'Esta vistoria já foi concluída e não possui itens pendentes.'
+              : inspection.reopenedFromPending
               ? 'Não há itens com pendência para exibir.'
               : 'Todos os itens desta etapa já foram tratados.'}
           </p>
         </div>
       )}
 
-      {groupedItems.map((group) => (
-        <div key={group.location} style={styles.groupSection}>
-          <h2 style={styles.groupTitle}>{group.location}</h2>
+      {!isReadOnlyFinishedWithoutPending &&
+        groupedItems.map((group) => (
+          <div key={group.location} style={styles.groupSection}>
+            <h2 style={styles.groupTitle}>{group.location}</h2>
 
-          <div style={styles.itemsColumn}>
-            {group.items.map((item) => {
-              const draft = getDraftItem(item.id);
-              const currentStatus = draft?.status || item.status;
-              const previewToShow =
-                draft?.localPreviewUrl || draft?.photoUrl || item.photoUrl || '';
-              const isNaoConforme = currentStatus === 'NAO_CONFORME';
+            <div style={styles.itemsColumn}>
+              {group.items.map((item) => {
+                const draft = getDraftItem(item.id);
+                const currentStatus = draft?.status || item.status;
+                const previewToShow =
+                  draft?.localPreviewUrl || draft?.photoUrl || item.photoUrl || '';
+                const isNaoConforme = currentStatus === 'NAO_CONFORME';
+                const isSavingThisItem = savingItemId === item.id;
 
-              return (
-                <div key={item.id} style={styles.itemCard}>
-                  <div style={styles.itemTopRow}>
-                    <label style={styles.checkboxRowNoMargin}>
-                      <input
-                        type="checkbox"
-                        checked={selectedItemIds.includes(item.id)}
-                        onChange={() => toggleItemSelection(item.id)}
-                      />
-                      <span>Selecionar</span>
-                    </label>
-                  </div>
-
-                  <h3 style={styles.itemTitle}>{item.checklistItem.itemName}</h3>
-
-                  <div style={styles.infoCompactRow}>
-                    <p style={styles.infoBadge}>
-                      <strong>Qtd:</strong> {item.checklistItem.quantity}
-                    </p>
-                    <p style={styles.infoBadge}>
-                      <strong>Status:</strong>{' '}
-                      {currentStatus === 'PENDENTE'
-                        ? 'Pendente'
-                        : currentStatus === 'CONFORME'
-                        ? 'Conforme'
-                        : 'Não conforme'}
-                    </p>
-                  </div>
-
-                  <div style={styles.statusButtonRow}>
-                    <button
-                      type="button"
-                      onClick={() => handleStatusChange(item.id, 'CONFORME')}
-                      style={{
-                        ...styles.statusButton,
-                        ...(currentStatus === 'CONFORME'
-                          ? styles.statusButtonActiveConforme
-                          : styles.statusButtonInactive),
-                      }}
-                    >
-                      Conforme
-                    </button>
-
-                    <button
-                      type="button"
-                      onClick={() => handleStatusChange(item.id, 'NAO_CONFORME')}
-                      style={{
-                        ...styles.statusButton,
-                        ...(currentStatus === 'NAO_CONFORME'
-                          ? styles.statusButtonActiveNaoConforme
-                          : styles.statusButtonInactive),
-                      }}
-                    >
-                      Não conforme
-                    </button>
-                  </div>
-
-                  {isNaoConforme && (
-                    <>
-                      <div style={styles.fieldBlock}>
-                        <label style={styles.fieldLabel}>Observações</label>
-                        <textarea
-                          placeholder="Descreva a observação do item"
-                          value={draft?.notes || ''}
-                          onChange={(e) =>
-                            updateDraftItem(item.id, 'notes', e.target.value)
-                          }
-                          style={styles.textarea}
+                return (
+                  <div key={item.id} style={styles.itemCard}>
+                    <div style={styles.itemTopRow}>
+                      <label style={styles.checkboxRowNoMargin}>
+                        <input
+                          type="checkbox"
+                          checked={selectedItemIds.includes(item.id)}
+                          onChange={() => toggleItemSelection(item.id)}
+                          disabled={isSavingThisItem || savingBulk}
                         />
-                      </div>
+                        <span>Selecionar</span>
+                      </label>
+                    </div>
 
-                      <div style={styles.fieldBlock}>
-                        <label style={styles.fieldLabel}>Foto do item</label>
+                    <h3 style={styles.itemTitle}>{item.checklistItem.itemName}</h3>
 
-                        <div style={styles.photoButtonsColumn}>
-                          <label style={styles.photoButton}>
-                            Tirar foto
-                            <input
-                              type="file"
-                              accept="image/*"
-                              capture="environment"
-                              onChange={(e) =>
-                                handleSelectPhoto(item.id, e.target.files[0])
-                              }
-                              style={{ display: 'none' }}
-                            />
-                          </label>
+                    <div style={styles.infoCompactRow}>
+                      <p style={styles.infoBadge}>
+                        <strong>Qtd:</strong> {item.checklistItem.quantity}
+                      </p>
+                      <p style={styles.infoBadge}>
+                        <strong>Status:</strong>{' '}
+                        {currentStatus === 'PENDENTE'
+                          ? 'Pendente'
+                          : currentStatus === 'CONFORME'
+                          ? 'Conforme'
+                          : 'Não conforme'}
+                      </p>
+                    </div>
 
-                          <label style={styles.photoButtonSecondary}>
-                            Escolher da galeria
-                            <input
-                              type="file"
-                              accept="image/*"
-                              onChange={(e) =>
-                                handleSelectPhoto(item.id, e.target.files[0])
-                              }
-                              style={{ display: 'none' }}
-                            />
-                          </label>
-                        </div>
-
-                        {draft?.selectedFile && (
-                          <p style={styles.fileName}>
-                            Foto selecionada: {draft.selectedFile.name}
-                          </p>
-                        )}
-
-                        {previewToShow && (
-                          <img
-                            src={previewToShow}
-                            alt="Item"
-                            style={styles.imagePreview}
-                          />
-                        )}
-                      </div>
+                    <div style={styles.statusButtonRow}>
+                      <button
+                        type="button"
+                        onClick={() => handleStatusChange(item.id, 'CONFORME')}
+                        disabled={isSavingThisItem || savingBulk}
+                        style={{
+                          ...styles.statusButton,
+                          ...(currentStatus === 'CONFORME'
+                            ? styles.statusButtonActiveConforme
+                            : styles.statusButtonInactive),
+                          ...((isSavingThisItem || savingBulk) ? styles.disabledButton : {}),
+                        }}
+                      >
+                        {isSavingThisItem && currentStatus === 'CONFORME'
+                          ? 'Salvando...'
+                          : 'Conforme'}
+                      </button>
 
                       <button
-                        style={styles.primaryButton}
-                        onClick={() => handleSaveItem(item.id)}
-                        disabled={savingItemId === item.id}
+                        type="button"
+                        onClick={() => handleStatusChange(item.id, 'NAO_CONFORME')}
+                        disabled={isSavingThisItem || savingBulk}
+                        style={{
+                          ...styles.statusButton,
+                          ...(currentStatus === 'NAO_CONFORME'
+                            ? styles.statusButtonActiveNaoConforme
+                            : styles.statusButtonInactive),
+                          ...((isSavingThisItem || savingBulk) ? styles.disabledButton : {}),
+                        }}
                       >
-                        {savingItemId === item.id ? 'Salvando...' : 'Salvar item'}
+                        Não conforme
                       </button>
-                    </>
-                  )}
-                </div>
-              );
-            })}
+                    </div>
+
+                    {isNaoConforme && (
+                      <>
+                        <div style={styles.fieldBlock}>
+                          <label style={styles.fieldLabel}>Observações</label>
+                          <textarea
+                            placeholder="Descreva a observação do item"
+                            value={draft?.notes || ''}
+                            onChange={(e) =>
+                              updateDraftItem(item.id, 'notes', e.target.value)
+                            }
+                            style={styles.textarea}
+                          />
+                        </div>
+
+                        <div style={styles.fieldBlock}>
+                          <label style={styles.fieldLabel}>Foto do item</label>
+
+                          <div style={styles.photoButtonsColumn}>
+                            <label style={styles.photoButton}>
+                              Tirar foto
+                              <input
+                                type="file"
+                                accept="image/*"
+                                capture="environment"
+                                onChange={(e) =>
+                                  handleSelectPhoto(item.id, e.target.files[0])
+                                }
+                                style={{ display: 'none' }}
+                              />
+                            </label>
+
+                            <label style={styles.photoButtonSecondary}>
+                              Escolher da galeria
+                              <input
+                                type="file"
+                                accept="image/*"
+                                onChange={(e) =>
+                                  handleSelectPhoto(item.id, e.target.files[0])
+                                }
+                                style={{ display: 'none' }}
+                              />
+                            </label>
+                          </div>
+
+                          {draft?.selectedFile && (
+                            <p style={styles.fileName}>
+                              Foto selecionada: {draft.selectedFile.name}
+                            </p>
+                          )}
+
+                          {previewToShow && (
+                            <img
+                              src={previewToShow}
+                              alt="Item"
+                              style={styles.imagePreview}
+                            />
+                          )}
+                        </div>
+
+                        <button
+                          style={styles.primaryButton}
+                          onClick={() => handleSaveItem(item.id)}
+                          disabled={isSavingThisItem}
+                        >
+                          {isSavingThisItem ? 'Salvando...' : 'Salvar item'}
+                        </button>
+                      </>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
           </div>
-        </div>
-      ))}
+        ))}
 
       <div style={styles.card}>
         <h2 style={styles.sectionTitle}>Assinatura do vistoriador</h2>
@@ -1043,6 +1070,14 @@ const styles = {
     padding: '10px 12px',
     marginTop: '8px',
   },
+  successNotice: {
+    fontSize: '0.95rem',
+    color: '#166534',
+    background: '#dcfce7',
+    borderRadius: '12px',
+    padding: '10px 12px',
+    marginTop: '8px',
+  },
   headerButtons: {
     display: 'flex',
     flexDirection: 'column',
@@ -1071,6 +1106,10 @@ const styles = {
     fontSize: '1rem',
     padding: '12px 16px',
     cursor: 'pointer',
+  },
+  disabledButton: {
+    opacity: 0.6,
+    cursor: 'not-allowed',
   },
   sectionTitle: {
     fontSize: '1.3rem',
