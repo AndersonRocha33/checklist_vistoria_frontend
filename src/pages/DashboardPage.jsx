@@ -13,6 +13,7 @@ export default function DashboardPage() {
   const [uploadMessage, setUploadMessage] = useState('');
   const [uploadError, setUploadError] = useState('');
   const [uploading, setUploading] = useState(false);
+  const [deletingEnterpriseId, setDeletingEnterpriseId] = useState('');
 
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('ALL');
@@ -46,6 +47,11 @@ export default function DashboardPage() {
     }
   }
 
+  async function reloadDashboardData() {
+    await loadEnterprises();
+    await loadAllApartments();
+  }
+
   function logout() {
     localStorage.removeItem('token');
     localStorage.removeItem('user');
@@ -58,7 +64,11 @@ export default function DashboardPage() {
       navigate(`/inspection/${response.data.id}`);
     } catch (error) {
       console.error(error);
-      alert('Erro ao iniciar vistoria.');
+      alert(
+        error.response?.data?.error ||
+          error.response?.data?.message ||
+          'Erro ao iniciar vistoria.'
+      );
     }
   }
 
@@ -92,8 +102,7 @@ export default function DashboardPage() {
       const input = document.getElementById('csv-input');
       if (input) input.value = '';
 
-      await loadEnterprises();
-      await loadAllApartments();
+      await reloadDashboardData();
     } catch (error) {
       console.error(error);
       setUploadError(
@@ -103,6 +112,43 @@ export default function DashboardPage() {
       );
     } finally {
       setUploading(false);
+    }
+  }
+
+  async function handleDeleteEnterprise(enterprise) {
+    const confirmed = window.confirm(
+      `Tem certeza que deseja excluir o empreendimento "${enterprise.name}"?\n\nEssa ação apagará também apartamentos, itens e vistorias vinculadas a ele.`
+    );
+
+    if (!confirmed) {
+      return;
+    }
+
+    try {
+      setUploadMessage('');
+      setUploadError('');
+      setDeletingEnterpriseId(enterprise.id);
+
+      const wasSelected = selectedEnterprise === enterprise.id;
+
+      await api.delete(`/enterprises/${enterprise.id}`);
+
+      if (wasSelected) {
+        setSelectedEnterprise('');
+      }
+
+      setUploadMessage(`Empreendimento "${enterprise.name}" excluído com sucesso.`);
+
+      await reloadDashboardData();
+    } catch (error) {
+      console.error(error);
+      setUploadError(
+        error.response?.data?.error ||
+          error.response?.data?.message ||
+          'Erro ao excluir empreendimento.'
+      );
+    } finally {
+      setDeletingEnterpriseId('');
     }
   }
 
@@ -118,7 +164,7 @@ export default function DashboardPage() {
   }
 
   function getStatusStyle(status) {
-    const styles = {
+    const stylesByStatus = {
       NAO_VISTORIADO: {
         background: '#e5e7eb',
         color: '#374151',
@@ -137,7 +183,7 @@ export default function DashboardPage() {
       },
     };
 
-    return styles[status] || styles.NAO_VISTORIADO;
+    return stylesByStatus[status] || stylesByStatus.NAO_VISTORIADO;
   }
 
   const filteredApartments = useMemo(() => {
@@ -249,6 +295,49 @@ export default function DashboardPage() {
 
         {uploadMessage ? <p style={styles.successText}>{uploadMessage}</p> : null}
         {uploadError ? <p style={styles.errorText}>{uploadError}</p> : null}
+      </div>
+
+      <div style={styles.card}>
+        <div style={styles.sectionHeader}>
+          <h2 style={styles.sectionTitleNoMargin}>Empreendimentos cadastrados</h2>
+          <span style={styles.enterpriseCount}>
+            Total: {enterprises.length}
+          </span>
+        </div>
+
+        {enterprises.length === 0 ? (
+          <p style={styles.emptyText}>Nenhum empreendimento cadastrado.</p>
+        ) : (
+          <div style={styles.enterpriseList}>
+            {enterprises.map((enterprise) => {
+              const apartmentCount = apartments.filter(
+                (apartment) => apartment.enterpriseId === enterprise.id
+              ).length;
+
+              const isDeleting = deletingEnterpriseId === enterprise.id;
+
+              return (
+                <div key={enterprise.id} style={styles.enterpriseRow}>
+                  <div style={styles.enterpriseInfo}>
+                    <p style={styles.enterpriseName}>{enterprise.name}</p>
+                    <p style={styles.enterpriseMeta}>
+                      Apartamentos: {apartmentCount}
+                    </p>
+                  </div>
+
+                  <button
+                    type="button"
+                    onClick={() => handleDeleteEnterprise(enterprise)}
+                    disabled={isDeleting}
+                    style={styles.dangerButton}
+                  >
+                    {isDeleting ? 'Excluindo...' : 'Excluir empreendimento'}
+                  </button>
+                </div>
+              );
+            })}
+          </div>
+        )}
       </div>
 
       <div style={styles.card}>
@@ -405,6 +494,58 @@ const styles = {
     margin: '0 0 16px 0',
     color: '#0f172a',
   },
+  sectionTitleNoMargin: {
+    margin: 0,
+    color: '#0f172a',
+  },
+  sectionHeader: {
+    display: 'flex',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    gap: '12px',
+    marginBottom: '16px',
+    flexWrap: 'wrap',
+  },
+  enterpriseCount: {
+    color: '#475569',
+    fontWeight: '600',
+  },
+  enterpriseList: {
+    display: 'flex',
+    flexDirection: 'column',
+    gap: '12px',
+  },
+  enterpriseRow: {
+    display: 'flex',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    gap: '16px',
+    padding: '14px 16px',
+    borderRadius: '14px',
+    border: '1px solid #e2e8f0',
+    background: '#f8fafc',
+    flexWrap: 'wrap',
+  },
+  enterpriseInfo: {
+    display: 'flex',
+    flexDirection: 'column',
+    gap: '6px',
+  },
+  enterpriseName: {
+    margin: 0,
+    fontWeight: '700',
+    color: '#0f172a',
+    fontSize: '1rem',
+  },
+  enterpriseMeta: {
+    margin: 0,
+    color: '#64748b',
+    fontSize: '0.95rem',
+  },
+  emptyText: {
+    margin: 0,
+    color: '#64748b',
+  },
   form: {
     display: 'flex',
     gap: '12px',
@@ -502,6 +643,16 @@ const styles = {
     borderRadius: '12px',
     background: '#e2e8f0',
     color: '#0f172a',
+    fontWeight: '700',
+    cursor: 'pointer',
+    padding: '0 16px',
+  },
+  dangerButton: {
+    minHeight: '44px',
+    border: 'none',
+    borderRadius: '12px',
+    background: '#dc2626',
+    color: '#ffffff',
     fontWeight: '700',
     cursor: 'pointer',
     padding: '0 16px',
