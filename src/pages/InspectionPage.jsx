@@ -833,9 +833,17 @@ export default function InspectionPage() {
                 draft?.localPreviewUrl || draft?.photoUrl || item.photoUrl || '';
               const isNaoConforme = currentStatus === 'NAO_CONFORME';
               const isSavingThisItem = savingItemId === item.id;
+              const isConforme = currentStatus === 'CONFORME';
 
               return (
-                <div key={item.id} style={styles.itemCard}>
+                <div
+                  key={item.id}
+                  style={{
+                    ...styles.itemCard,
+                    ...(isConforme ? styles.itemCardCompact : {}),
+                    ...(isNaoConforme ? styles.itemCardExpanded : {}),
+                  }}
+                >
                   {!isReadOnlyFinishedWithoutPending && (
                     <div style={styles.itemTopRow}>
                       <label style={styles.checkboxRowNoMargin}>
@@ -850,20 +858,30 @@ export default function InspectionPage() {
                     </div>
                   )}
 
-                  <h3 style={styles.itemTitle}>{item.checklistItem.itemName}</h3>
+                  <div style={styles.itemHeaderCompact}>
+                    <div style={styles.itemMainInfo}>
+                      <h3 style={styles.itemTitleCompact}>{item.checklistItem.itemName}</h3>
+                      <p style={styles.itemSubInfo}>
+                        Quantidade: {item.checklistItem.quantity}
+                      </p>
+                    </div>
 
-                  <div style={styles.infoCompactRow}>
-                    <p style={styles.infoBadge}>
-                      <strong>Qtd:</strong> {item.checklistItem.quantity}
-                    </p>
-                    <p style={styles.infoBadge}>
-                      <strong>Status:</strong>{' '}
-                      {currentStatus === 'PENDENTE'
-                        ? 'Pendente'
-                        : currentStatus === 'CONFORME'
+                    <div
+                      style={{
+                        ...styles.statusInlineBadge,
+                        ...(isConforme
+                          ? styles.statusInlineConforme
+                          : isNaoConforme
+                          ? styles.statusInlineNaoConforme
+                          : styles.statusInlinePendente),
+                      }}
+                    >
+                      {currentStatus === 'CONFORME'
                         ? 'Conforme'
-                        : 'Não conforme'}
-                    </p>
+                        : currentStatus === 'NAO_CONFORME'
+                        ? 'Não conforme'
+                        : 'Pendente'}
+                    </div>
                   </div>
 
                   {!isReadOnlyFinishedWithoutPending ? (
@@ -1214,6 +1232,14 @@ const styles = {
     borderRadius: '18px',
     padding: '16px',
     boxShadow: '0 6px 20px rgba(0,0,0,0.08)',
+    border: '1px solid #e5e7eb',
+  },
+  itemCardCompact: {
+    paddingBottom: '14px',
+  },
+  itemCardExpanded: {
+    border: '1px solid #fecaca',
+    background: '#fffafa',
   },
   itemTopRow: {
     display: 'flex',
@@ -1221,26 +1247,47 @@ const styles = {
     alignItems: 'center',
     marginBottom: '8px',
   },
-  itemTitle: {
-    fontSize: '1.25rem',
-    lineHeight: 1.25,
+  itemHeaderCompact: {
+    display: 'flex',
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
+    gap: '12px',
     marginBottom: '12px',
+    flexWrap: 'wrap',
+  },
+  itemMainInfo: {
+    flex: 1,
+    minWidth: '220px',
+  },
+  itemTitleCompact: {
+    fontSize: '1.05rem',
+    lineHeight: 1.3,
+    margin: 0,
     color: '#0f172a',
   },
-  infoCompactRow: {
-    display: 'flex',
-    flexWrap: 'wrap',
-    gap: '8px',
-    marginBottom: '14px',
+  itemSubInfo: {
+    margin: '6px 0 0 0',
+    color: '#475569',
+    fontSize: '0.95rem',
   },
-  infoBadge: {
-    background: '#f8fafc',
-    border: '1px solid #e2e8f0',
+  statusInlineBadge: {
     borderRadius: '999px',
     padding: '8px 12px',
-    color: '#334155',
-    fontSize: '0.95rem',
-    margin: 0,
+    fontSize: '0.88rem',
+    fontWeight: '700',
+    whiteSpace: 'nowrap',
+  },
+  statusInlineConforme: {
+    background: '#dcfce7',
+    color: '#166534',
+  },
+  statusInlineNaoConforme: {
+    background: '#fee2e2',
+    color: '#991b1b',
+  },
+  statusInlinePendente: {
+    background: '#fef3c7',
+    color: '#92400e',
   },
   fieldBlock: {
     marginBottom: '14px',
