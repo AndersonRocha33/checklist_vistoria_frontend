@@ -78,10 +78,8 @@ function SignaturePad({ canvasRef, onChangePreview }) {
 function readFileAsDataUrl(file) {
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
-
     reader.onload = () => resolve(reader.result);
     reader.onerror = reject;
-
     reader.readAsDataURL(file);
   });
 }
@@ -149,10 +147,6 @@ export default function InspectionPage() {
             }
           });
         }
-
-        if (item.localPreviewUrl && item.localPreviewUrl.startsWith('blob:')) {
-          URL.revokeObjectURL(item.localPreviewUrl);
-        }
       });
     };
   }, [draftItems]);
@@ -194,7 +188,7 @@ export default function InspectionPage() {
             : [],
           selectedFiles: [],
           localPreviewUrls: [],
-          localPreviewUrl: '',
+          isEditingNaoConforme: false,
         }))
       );
 
@@ -252,6 +246,16 @@ export default function InspectionPage() {
     setSelectedItemIds([]);
   }
 
+  function clearDraftPhotos(item) {
+    if (Array.isArray(item.localPreviewUrls)) {
+      item.localPreviewUrls.forEach((url) => {
+        if (url && url.startsWith('blob:')) {
+          URL.revokeObjectURL(url);
+        }
+      });
+    }
+  }
+
   function markSelectedAsConforme() {
     if (selectedItemIds.length === 0) {
       alert('Selecione ao menos um item.');
@@ -262,13 +266,7 @@ export default function InspectionPage() {
       prev.map((item) => {
         if (!selectedItemIds.includes(item.id)) return item;
 
-        if (Array.isArray(item.localPreviewUrls)) {
-          item.localPreviewUrls.forEach((url) => {
-            if (url && url.startsWith('blob:')) {
-              URL.revokeObjectURL(url);
-            }
-          });
-        }
+        clearDraftPhotos(item);
 
         return {
           ...item,
@@ -278,7 +276,7 @@ export default function InspectionPage() {
           photoUrls: [],
           selectedFiles: [],
           localPreviewUrls: [],
-          localPreviewUrl: '',
+          isEditingNaoConforme: false,
         };
       })
     );
@@ -293,7 +291,9 @@ export default function InspectionPage() {
       prev.map((item) => {
         if (item.id !== itemId) return item;
 
-        const currentFiles = Array.isArray(item.selectedFiles) ? [...item.selectedFiles] : [];
+        const currentFiles = Array.isArray(item.selectedFiles)
+          ? [...item.selectedFiles]
+          : [];
         const currentPreviewUrls = Array.isArray(item.localPreviewUrls)
           ? [...item.localPreviewUrls]
           : [];
@@ -311,6 +311,7 @@ export default function InspectionPage() {
           ...item,
           selectedFiles: currentFiles,
           localPreviewUrls: currentPreviewUrls,
+          isEditingNaoConforme: true,
         };
       })
     );
@@ -363,13 +364,7 @@ export default function InspectionPage() {
       prev.map((item) => {
         if (item.id !== itemId) return item;
 
-        if (Array.isArray(item.localPreviewUrls)) {
-          item.localPreviewUrls.forEach((url) => {
-            if (url && url.startsWith('blob:')) {
-              URL.revokeObjectURL(url);
-            }
-          });
-        }
+        clearDraftPhotos(item);
 
         return {
           ...item,
@@ -379,7 +374,7 @@ export default function InspectionPage() {
           photoUrls: finalPhotoData.photoUrls,
           selectedFiles: [],
           localPreviewUrls: [],
-          localPreviewUrl: '',
+          isEditingNaoConforme: false,
         };
       })
     );
@@ -445,7 +440,7 @@ export default function InspectionPage() {
         photoUrls: [],
         selectedFiles: [],
         localPreviewUrls: [],
-        localPreviewUrl: '',
+        isEditingNaoConforme: false,
       };
 
       try {
@@ -455,14 +450,7 @@ export default function InspectionPage() {
           prev.map((item) => {
             if (item.id !== itemId) return item;
 
-            if (Array.isArray(item.localPreviewUrls)) {
-              item.localPreviewUrls.forEach((url) => {
-                if (url && url.startsWith('blob:')) {
-                  URL.revokeObjectURL(url);
-                }
-              });
-            }
-
+            clearDraftPhotos(item);
             return nextDraft;
           })
         );
@@ -489,6 +477,7 @@ export default function InspectionPage() {
           ? {
               ...item,
               status: 'NAO_CONFORME',
+              isEditingNaoConforme: true,
             }
           : item
       )
@@ -718,22 +707,29 @@ export default function InspectionPage() {
       return mergedItems;
     }
 
-    if (inspection.reopenedFromPending) {
-      return mergedItems.filter(
-        (item) => item.status === 'NAO_CONFORME'
-      );
-    }
-
     return mergedItems.filter((item) => {
-      const unsavedNaoConforme =
-        item.status === 'NAO_CONFORME' && !savedItemIds.includes(item.id);
+      const draft = draftItems.find((draftItem) => draftItem.id === item.id);
 
-      const pendingItem =
+      if (inspection.reopenedFromPending) {
+        return item.status === 'NAO_CONFORME' || draft?.isEditingNaoConforme;
+      }
+
+      const isPendingAndNotSaved =
         item.status === 'PENDENTE' && !savedItemIds.includes(item.id);
 
-      return pendingItem || unsavedNaoConforme;
+      const isEditingNaoConforme = Boolean(draft?.isEditingNaoConforme);
+
+      const isSavedNaoConforme =
+        item.status === 'NAO_CONFORME' &&
+        Boolean(
+          item.notes ||
+            item.photoUrl ||
+            (Array.isArray(item.photoUrls) && item.photoUrls.length > 0)
+        );
+
+      return isPendingAndNotSaved || isEditingNaoConforme || isSavedNaoConforme;
     });
-  }, [inspection, mergedItems, savedItemIds, isReadOnlyFinishedWithoutPending]);
+  }, [inspection, mergedItems, savedItemIds, isReadOnlyFinishedWithoutPending, draftItems]);
 
   const locations = useMemo(() => {
     const uniqueLocations = [
@@ -916,6 +912,7 @@ export default function InspectionPage() {
             {group.items.map((item) => {
               const draft = getDraftItem(item.id);
               const currentStatus = draft?.status || item.status;
+
               const previewList =
                 draft?.localPreviewUrls?.length > 0
                   ? draft.localPreviewUrls
@@ -927,7 +924,14 @@ export default function InspectionPage() {
                   ? [item.photoUrl]
                   : [];
 
-              const isNaoConforme = currentStatus === 'NAO_CONFORME';
+              const isNaoConforme =
+                currentStatus === 'NAO_CONFORME' &&
+                (draft?.isEditingNaoConforme ||
+                  Boolean(draft?.notes) ||
+                  (Array.isArray(draft?.photoUrls) && draft.photoUrls.length > 0) ||
+                  (Array.isArray(draft?.localPreviewUrls) &&
+                    draft.localPreviewUrls.length > 0));
+
               const isSavingThisItem = savingItemId === item.id;
               const isConforme = currentStatus === 'CONFORME';
 
@@ -967,7 +971,7 @@ export default function InspectionPage() {
                         ...styles.statusInlineBadge,
                         ...(isConforme
                           ? styles.statusInlineConforme
-                          : isNaoConforme
+                          : currentStatus === 'NAO_CONFORME'
                           ? styles.statusInlineNaoConforme
                           : styles.statusInlinePendente),
                       }}
