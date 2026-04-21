@@ -238,13 +238,21 @@ export default function InspectionPage() {
     );
   }
 
+  function selectAllVisibleItems(itemsToSelect) {
+    setSelectedItemIds(itemsToSelect.map((item) => item.id));
+  }
+
+  function clearAllSelectedItems() {
+    setSelectedItemIds([]);
+  }
+
   function toggleSelectAllVisibleItems(checked, itemsToSelect) {
     if (checked) {
-      setSelectedItemIds(itemsToSelect.map((item) => item.id));
+      selectAllVisibleItems(itemsToSelect);
       return;
     }
 
-    setSelectedItemIds([]);
+    clearAllSelectedItems();
   }
 
   function clearDraftPhotos(item) {
@@ -714,25 +722,20 @@ export default function InspectionPage() {
       const draft = draftItems.find((draftItem) => draftItem.id === item.id);
 
       if (inspection.reopenedFromPending) {
-        return item.status === 'NAO_CONFORME' || draft?.isEditingNaoConforme;
+        const isEditingNaoConforme = Boolean(draft?.isEditingNaoConforme);
+        const isNaoConformeNotResolved =
+          item.status === 'NAO_CONFORME' && !savedItemIds.includes(item.id);
+
+        return isEditingNaoConforme || isNaoConformeNotResolved;
       }
 
       const isPendingAndNotSaved =
         item.status === 'PENDENTE' && !savedItemIds.includes(item.id);
 
       const isEditingNaoConforme = Boolean(draft?.isEditingNaoConforme);
-
-      const isSavedNaoConforme =
-        item.status === 'NAO_CONFORME' && savedItemIds.includes(item.id);
-
       const isQueuedAsConforme = Boolean(draft?.queuedAsConforme);
 
-      return (
-        isPendingAndNotSaved ||
-        isEditingNaoConforme ||
-        isSavedNaoConforme ||
-        isQueuedAsConforme
-      );
+      return isPendingAndNotSaved || isEditingNaoConforme || isQueuedAsConforme;
     });
   }, [inspection, mergedItems, savedItemIds, isReadOnlyFinishedWithoutPending, draftItems]);
 
@@ -875,6 +878,20 @@ export default function InspectionPage() {
           </label>
 
           <div style={styles.bulkColumn}>
+            <button
+              style={styles.secondaryButton}
+              onClick={() => selectAllVisibleItems(visibleItems)}
+            >
+              Selecionar todos
+            </button>
+
+            <button
+              style={styles.secondaryButton}
+              onClick={clearAllSelectedItems}
+            >
+              Desmarcar todos
+            </button>
+
             <button
               style={styles.secondaryButton}
               onClick={markSelectedAsConforme}
