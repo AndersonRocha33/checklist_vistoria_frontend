@@ -187,7 +187,11 @@ export default function InspectionPage() {
           status: item.status,
           notes: item.notes || '',
           photoUrl: item.photoUrl || '',
-          photoUrls: Array.isArray(item.photoUrls) ? item.photoUrls : (item.photoUrl ? [item.photoUrl] : []),
+          photoUrls: Array.isArray(item.photoUrls)
+            ? item.photoUrls
+            : item.photoUrl
+            ? [item.photoUrl]
+            : [],
           selectedFiles: [],
           localPreviewUrls: [],
           localPreviewUrl: '',
@@ -290,7 +294,9 @@ export default function InspectionPage() {
         if (item.id !== itemId) return item;
 
         const currentFiles = Array.isArray(item.selectedFiles) ? [...item.selectedFiles] : [];
-        const currentPreviewUrls = Array.isArray(item.localPreviewUrls) ? [...item.localPreviewUrls] : [];
+        const currentPreviewUrls = Array.isArray(item.localPreviewUrls)
+          ? [...item.localPreviewUrls]
+          : [];
 
         if (currentFiles.length >= 2) {
           URL.revokeObjectURL(previewUrl);
@@ -378,10 +384,12 @@ export default function InspectionPage() {
       })
     );
 
-    setSavedItemIds((prev) => [...new Set([...prev, itemId])]);
-    setSelectedItemIds((prev) =>
-      prev.filter((currentId) => currentId !== itemId)
-    );
+    if (draft.status === 'CONFORME') {
+      setSavedItemIds((prev) => [...new Set([...prev, itemId])]);
+      setSelectedItemIds((prev) =>
+        prev.filter((currentId) => currentId !== itemId)
+      );
+    }
   }
 
   async function persistItem(itemId, customDraft = null) {
@@ -402,16 +410,22 @@ export default function InspectionPage() {
 
     const savedItem = response.data;
 
-    updateAfterSave(itemId, {
-      ...draft,
-      status: savedItem.status,
-      notes: savedItem.notes || '',
-    }, {
-      photoUrl: savedItem.photoUrl || finalPhotoData.photoUrl || '',
-      photoUrls: Array.isArray(savedItem.photoUrls)
-        ? savedItem.photoUrls
-        : (savedItem.photoUrl ? [savedItem.photoUrl] : finalPhotoData.photoUrls),
-    });
+    updateAfterSave(
+      itemId,
+      {
+        ...draft,
+        status: savedItem.status,
+        notes: savedItem.notes || '',
+      },
+      {
+        photoUrl: savedItem.photoUrl || finalPhotoData.photoUrl || '',
+        photoUrls: Array.isArray(savedItem.photoUrls)
+          ? savedItem.photoUrls
+          : savedItem.photoUrl
+          ? [savedItem.photoUrl]
+          : finalPhotoData.photoUrls,
+      }
+    );
   }
 
   async function handleStatusChange(itemId, status) {
@@ -706,14 +720,19 @@ export default function InspectionPage() {
 
     if (inspection.reopenedFromPending) {
       return mergedItems.filter(
-        (item) =>
-          item.status === 'NAO_CONFORME' && !savedItemIds.includes(item.id)
+        (item) => item.status === 'NAO_CONFORME'
       );
     }
 
-    return mergedItems.filter(
-      (item) => item.status === 'PENDENTE' && !savedItemIds.includes(item.id)
-    );
+    return mergedItems.filter((item) => {
+      const unsavedNaoConforme =
+        item.status === 'NAO_CONFORME' && !savedItemIds.includes(item.id);
+
+      const pendingItem =
+        item.status === 'PENDENTE' && !savedItemIds.includes(item.id);
+
+      return pendingItem || unsavedNaoConforme;
+    });
   }, [inspection, mergedItems, savedItemIds, isReadOnlyFinishedWithoutPending]);
 
   const locations = useMemo(() => {
