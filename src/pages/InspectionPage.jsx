@@ -142,7 +142,15 @@ export default function InspectionPage() {
   useEffect(() => {
     return () => {
       draftItems.forEach((item) => {
-        if (item.localPreviewUrl) {
+        if (Array.isArray(item.localPreviewUrls)) {
+          item.localPreviewUrls.forEach((url) => {
+            if (url && url.startsWith('blob:')) {
+              URL.revokeObjectURL(url);
+            }
+          });
+        }
+
+        if (item.localPreviewUrl && item.localPreviewUrl.startsWith('blob:')) {
           URL.revokeObjectURL(item.localPreviewUrl);
         }
       });
@@ -179,7 +187,9 @@ export default function InspectionPage() {
           status: item.status,
           notes: item.notes || '',
           photoUrl: item.photoUrl || '',
-          selectedFile: null,
+          photoUrls: Array.isArray(item.photoUrls) ? item.photoUrls : (item.photoUrl ? [item.photoUrl] : []),
+          selectedFiles: [],
+          localPreviewUrls: [],
           localPreviewUrl: '',
         }))
       );
@@ -248,8 +258,12 @@ export default function InspectionPage() {
       prev.map((item) => {
         if (!selectedItemIds.includes(item.id)) return item;
 
-        if (item.localPreviewUrl) {
-          URL.revokeObjectURL(item.localPreviewUrl);
+        if (Array.isArray(item.localPreviewUrls)) {
+          item.localPreviewUrls.forEach((url) => {
+            if (url && url.startsWith('blob:')) {
+              URL.revokeObjectURL(url);
+            }
+          });
         }
 
         return {
@@ -257,7 +271,9 @@ export default function InspectionPage() {
           status: 'CONFORME',
           notes: '',
           photoUrl: '',
-          selectedFile: null,
+          photoUrls: [],
+          selectedFiles: [],
+          localPreviewUrls: [],
           localPreviewUrl: '',
         };
       })
@@ -273,30 +289,55 @@ export default function InspectionPage() {
       prev.map((item) => {
         if (item.id !== itemId) return item;
 
-        if (item.localPreviewUrl) {
-          URL.revokeObjectURL(item.localPreviewUrl);
+        const currentFiles = Array.isArray(item.selectedFiles) ? [...item.selectedFiles] : [];
+        const currentPreviewUrls = Array.isArray(item.localPreviewUrls) ? [...item.localPreviewUrls] : [];
+
+        if (currentFiles.length >= 2) {
+          URL.revokeObjectURL(previewUrl);
+          alert('Você pode adicionar no máximo 2 fotos por item.');
+          return item;
         }
+
+        currentFiles.push(file);
+        currentPreviewUrls.push(previewUrl);
 
         return {
           ...item,
-          selectedFile: file,
-          localPreviewUrl: previewUrl,
+          selectedFiles: currentFiles,
+          localPreviewUrls: currentPreviewUrls,
         };
       })
     );
   }
 
   async function resolveFinalPhotoValue(draft) {
-    if (!draft) return '';
-
-    if (draft.selectedFile) {
-      return compressImageToDataUrl(draft.selectedFile);
+    if (!draft) {
+      return {
+        photoUrl: '',
+        photoUrls: [],
+      };
     }
 
-    return draft.photoUrl || '';
+    let finalPhotos = [];
+
+    if (Array.isArray(draft.selectedFiles) && draft.selectedFiles.length > 0) {
+      for (const file of draft.selectedFiles) {
+        const compressed = await compressImageToDataUrl(file);
+        finalPhotos.push(compressed);
+      }
+    } else if (Array.isArray(draft.photoUrls) && draft.photoUrls.length > 0) {
+      finalPhotos = draft.photoUrls;
+    } else if (draft.photoUrl) {
+      finalPhotos = [draft.photoUrl];
+    }
+
+    return {
+      photoUrl: finalPhotos[0] || '',
+      photoUrls: finalPhotos,
+    };
   }
 
-  function updateAfterSave(itemId, draft, finalPhotoUrl) {
+  function updateAfterSave(itemId, draft, finalPhotoData) {
     setInspection((prev) => ({
       ...prev,
       items: prev.items.map((item) =>
@@ -305,7 +346,8 @@ export default function InspectionPage() {
               ...item,
               status: draft.status,
               notes: draft.notes,
-              photoUrl: finalPhotoUrl,
+              photoUrl: finalPhotoData.photoUrl,
+              photoUrls: finalPhotoData.photoUrls,
             }
           : item
       ),
@@ -315,16 +357,22 @@ export default function InspectionPage() {
       prev.map((item) => {
         if (item.id !== itemId) return item;
 
-        if (item.localPreviewUrl) {
-          URL.revokeObjectURL(item.localPreviewUrl);
+        if (Array.isArray(item.localPreviewUrls)) {
+          item.localPreviewUrls.forEach((url) => {
+            if (url && url.startsWith('blob:')) {
+              URL.revokeObjectURL(url);
+            }
+          });
         }
 
         return {
           ...item,
           status: draft.status,
           notes: draft.notes,
-          photoUrl: finalPhotoUrl,
-          selectedFile: null,
+          photoUrl: finalPhotoData.photoUrl,
+          photoUrls: finalPhotoData.photoUrls,
+          selectedFiles: [],
+          localPreviewUrls: [],
           localPreviewUrl: '',
         };
       })
@@ -343,25 +391,27 @@ export default function InspectionPage() {
       throw new Error('Item não encontrado para salvar.');
     }
 
-    const finalPhotoUrl = await resolveFinalPhotoValue(draft);
+    const finalPhotoData = await resolveFinalPhotoValue(draft);
 
     const response = await api.put(`/inspections/item/${itemId}`, {
       status: draft.status,
       notes: draft.notes,
-      photoUrl: finalPhotoUrl,
+      photoUrl: finalPhotoData.photoUrl,
+      photoUrls: finalPhotoData.photoUrls,
     });
 
     const savedItem = response.data;
 
-    updateAfterSave(
-      itemId,
-      {
-        ...draft,
-        status: savedItem.status,
-        notes: savedItem.notes || '',
-      },
-      savedItem.photoUrl || finalPhotoUrl || ''
-    );
+    updateAfterSave(itemId, {
+      ...draft,
+      status: savedItem.status,
+      notes: savedItem.notes || '',
+    }, {
+      photoUrl: savedItem.photoUrl || finalPhotoData.photoUrl || '',
+      photoUrls: Array.isArray(savedItem.photoUrls)
+        ? savedItem.photoUrls
+        : (savedItem.photoUrl ? [savedItem.photoUrl] : finalPhotoData.photoUrls),
+    });
   }
 
   async function handleStatusChange(itemId, status) {
@@ -378,7 +428,9 @@ export default function InspectionPage() {
         status: 'CONFORME',
         notes: '',
         photoUrl: '',
-        selectedFile: null,
+        photoUrls: [],
+        selectedFiles: [],
+        localPreviewUrls: [],
         localPreviewUrl: '',
       };
 
@@ -389,8 +441,12 @@ export default function InspectionPage() {
           prev.map((item) => {
             if (item.id !== itemId) return item;
 
-            if (item.localPreviewUrl) {
-              URL.revokeObjectURL(item.localPreviewUrl);
+            if (Array.isArray(item.localPreviewUrls)) {
+              item.localPreviewUrls.forEach((url) => {
+                if (url && url.startsWith('blob:')) {
+                  URL.revokeObjectURL(url);
+                }
+              });
             }
 
             return nextDraft;
@@ -617,11 +673,23 @@ export default function InspectionPage() {
     return inspection.items.map((item) => {
       const draft = draftItems.find((draftItem) => draftItem.id === item.id);
 
+      const mergedPhotoUrls =
+        draft?.localPreviewUrls?.length > 0
+          ? draft.localPreviewUrls
+          : draft?.photoUrls?.length > 0
+          ? draft.photoUrls
+          : Array.isArray(item.photoUrls) && item.photoUrls.length > 0
+          ? item.photoUrls
+          : item.photoUrl
+          ? [item.photoUrl]
+          : [];
+
       return {
         ...item,
         status: draft?.status ?? item.status,
         notes: draft?.notes ?? item.notes,
-        photoUrl: draft?.localPreviewUrl || draft?.photoUrl || item.photoUrl || '',
+        photoUrl: mergedPhotoUrls[0] || item.photoUrl || '',
+        photoUrls: mergedPhotoUrls,
       };
     });
   }, [inspection, draftItems]);
@@ -829,8 +897,17 @@ export default function InspectionPage() {
             {group.items.map((item) => {
               const draft = getDraftItem(item.id);
               const currentStatus = draft?.status || item.status;
-              const previewToShow =
-                draft?.localPreviewUrl || draft?.photoUrl || item.photoUrl || '';
+              const previewList =
+                draft?.localPreviewUrls?.length > 0
+                  ? draft.localPreviewUrls
+                  : draft?.photoUrls?.length > 0
+                  ? draft.photoUrls
+                  : item.photoUrls?.length > 0
+                  ? item.photoUrls
+                  : item.photoUrl
+                  ? [item.photoUrl]
+                  : [];
+
               const isNaoConforme = currentStatus === 'NAO_CONFORME';
               const isSavingThisItem = savingItemId === item.id;
               const isConforme = currentStatus === 'CONFORME';
@@ -935,7 +1012,7 @@ export default function InspectionPage() {
                           </div>
 
                           <div style={styles.fieldBlock}>
-                            <label style={styles.fieldLabel}>Foto do item</label>
+                            <label style={styles.fieldLabel}>Fotos do item (máximo 2)</label>
 
                             <div style={styles.photoButtonsColumn}>
                               <label style={styles.photoButton}>
@@ -964,19 +1041,20 @@ export default function InspectionPage() {
                               </label>
                             </div>
 
-                            {draft?.selectedFile && (
-                              <p style={styles.fileName}>
-                                Foto selecionada: {draft.selectedFile.name}
-                              </p>
-                            )}
+                            <p style={styles.fileName}>
+                              Você pode adicionar até 2 fotos.
+                            </p>
 
-                            {previewToShow && (
-                              <img
-                                src={previewToShow}
-                                alt="Item"
-                                style={styles.imagePreview}
-                              />
-                            )}
+                            <div style={styles.previewGrid}>
+                              {previewList.map((photo, index) => (
+                                <img
+                                  key={index}
+                                  src={photo}
+                                  alt={`Foto ${index + 1}`}
+                                  style={styles.imagePreview}
+                                />
+                              ))}
+                            </div>
                           </div>
 
                           <button
@@ -991,7 +1069,7 @@ export default function InspectionPage() {
                     </>
                   ) : (
                     <>
-                      {(item.notes || item.photoUrl) && (
+                      {(item.notes || (item.photoUrls && item.photoUrls.length > 0) || item.photoUrl) && (
                         <div style={styles.readOnlyBlock}>
                           {item.notes ? (
                             <p style={styles.readOnlyText}>
@@ -999,13 +1077,20 @@ export default function InspectionPage() {
                             </p>
                           ) : null}
 
-                          {item.photoUrl ? (
-                            <img
-                              src={item.photoUrl}
-                              alt="Item"
-                              style={styles.imagePreview}
-                            />
-                          ) : null}
+                          <div style={styles.previewGrid}>
+                            {(Array.isArray(item.photoUrls) && item.photoUrls.length > 0
+                              ? item.photoUrls
+                              : item.photoUrl
+                              ? [item.photoUrl]
+                              : []).map((photo, index) => (
+                              <img
+                                key={index}
+                                src={photo}
+                                alt={`Foto ${index + 1}`}
+                                style={styles.imagePreview}
+                              />
+                            ))}
+                          </div>
                         </div>
                       )}
                     </>
@@ -1382,12 +1467,18 @@ const styles = {
     color: '#475569',
     fontSize: '0.95rem',
   },
+  previewGrid: {
+    display: 'grid',
+    gridTemplateColumns: '1fr 1fr',
+    gap: '10px',
+    marginTop: '12px',
+  },
   imagePreview: {
     width: '100%',
     maxHeight: '260px',
     objectFit: 'cover',
     borderRadius: '14px',
-    marginTop: '12px',
+    marginTop: '0',
     border: '1px solid #e2e8f0',
   },
   readOnlyBlock: {
