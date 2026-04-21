@@ -189,6 +189,7 @@ export default function InspectionPage() {
           selectedFiles: [],
           localPreviewUrls: [],
           isEditingNaoConforme: false,
+          queuedAsConforme: false,
         }))
       );
 
@@ -277,6 +278,7 @@ export default function InspectionPage() {
           selectedFiles: [],
           localPreviewUrls: [],
           isEditingNaoConforme: false,
+          queuedAsConforme: true,
         };
       })
     );
@@ -312,6 +314,7 @@ export default function InspectionPage() {
           selectedFiles: currentFiles,
           localPreviewUrls: currentPreviewUrls,
           isEditingNaoConforme: true,
+          queuedAsConforme: false,
         };
       })
     );
@@ -375,16 +378,15 @@ export default function InspectionPage() {
           selectedFiles: [],
           localPreviewUrls: [],
           isEditingNaoConforme: false,
+          queuedAsConforme: false,
         };
       })
     );
 
-    if (draft.status === 'CONFORME') {
-      setSavedItemIds((prev) => [...new Set([...prev, itemId])]);
-      setSelectedItemIds((prev) =>
-        prev.filter((currentId) => currentId !== itemId)
-      );
-    }
+    setSavedItemIds((prev) => [...new Set([...prev, itemId])]);
+    setSelectedItemIds((prev) =>
+      prev.filter((currentId) => currentId !== itemId)
+    );
   }
 
   async function persistItem(itemId, customDraft = null) {
@@ -441,6 +443,7 @@ export default function InspectionPage() {
         selectedFiles: [],
         localPreviewUrls: [],
         isEditingNaoConforme: false,
+        queuedAsConforme: false,
       };
 
       try {
@@ -449,7 +452,6 @@ export default function InspectionPage() {
         setDraftItems((prev) =>
           prev.map((item) => {
             if (item.id !== itemId) return item;
-
             clearDraftPhotos(item);
             return nextDraft;
           })
@@ -478,6 +480,7 @@ export default function InspectionPage() {
               ...item,
               status: 'NAO_CONFORME',
               isEditingNaoConforme: true,
+              queuedAsConforme: false,
             }
           : item
       )
@@ -720,14 +723,16 @@ export default function InspectionPage() {
       const isEditingNaoConforme = Boolean(draft?.isEditingNaoConforme);
 
       const isSavedNaoConforme =
-        item.status === 'NAO_CONFORME' &&
-        Boolean(
-          item.notes ||
-            item.photoUrl ||
-            (Array.isArray(item.photoUrls) && item.photoUrls.length > 0)
-        );
+        item.status === 'NAO_CONFORME' && savedItemIds.includes(item.id);
 
-      return isPendingAndNotSaved || isEditingNaoConforme || isSavedNaoConforme;
+      const isQueuedAsConforme = Boolean(draft?.queuedAsConforme);
+
+      return (
+        isPendingAndNotSaved ||
+        isEditingNaoConforme ||
+        isSavedNaoConforme ||
+        isQueuedAsConforme
+      );
     });
   }, [inspection, mergedItems, savedItemIds, isReadOnlyFinishedWithoutPending, draftItems]);
 
