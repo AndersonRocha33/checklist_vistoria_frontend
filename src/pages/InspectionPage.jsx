@@ -722,11 +722,21 @@ export default function InspectionPage() {
       const draft = draftItems.find((draftItem) => draftItem.id === item.id);
 
       if (inspection.reopenedFromPending) {
-        const isEditingNaoConforme = Boolean(draft?.isEditingNaoConforme);
-        const isNaoConformeNotResolved =
+        const isPendingNotSaved =
+          item.status === 'PENDENTE' && !savedItemIds.includes(item.id);
+
+        const isNaoConformeNotSaved =
           item.status === 'NAO_CONFORME' && !savedItemIds.includes(item.id);
 
-        return isEditingNaoConforme || isNaoConformeNotResolved;
+        const isEditingNaoConforme = Boolean(draft?.isEditingNaoConforme);
+        const isQueuedAsConforme = Boolean(draft?.queuedAsConforme);
+
+        return (
+          isPendingNotSaved ||
+          isNaoConformeNotSaved ||
+          isEditingNaoConforme ||
+          isQueuedAsConforme
+        );
       }
 
       const isPendingAndNotSaved =
@@ -737,7 +747,13 @@ export default function InspectionPage() {
 
       return isPendingAndNotSaved || isEditingNaoConforme || isQueuedAsConforme;
     });
-  }, [inspection, mergedItems, savedItemIds, isReadOnlyFinishedWithoutPending, draftItems]);
+  }, [
+    inspection,
+    mergedItems,
+    savedItemIds,
+    isReadOnlyFinishedWithoutPending,
+    draftItems,
+  ]);
 
   const locations = useMemo(() => {
     const uniqueLocations = [
@@ -810,7 +826,7 @@ export default function InspectionPage() {
 
           {inspection.reopenedFromPending && (
             <p style={styles.reviewText}>
-              Modo de revisão: exibindo apenas itens com pendência.
+              Modo de revisão: exibindo itens pendentes e não conformes.
             </p>
           )}
 
@@ -885,17 +901,11 @@ export default function InspectionPage() {
               Selecionar todos
             </button>
 
-            <button
-              style={styles.secondaryButton}
-              onClick={clearAllSelectedItems}
-            >
+            <button style={styles.secondaryButton} onClick={clearAllSelectedItems}>
               Desmarcar todos
             </button>
 
-            <button
-              style={styles.secondaryButton}
-              onClick={markSelectedAsConforme}
-            >
+            <button style={styles.secondaryButton} onClick={markSelectedAsConforme}>
               Marcar selecionados como conforme
             </button>
 
@@ -920,7 +930,7 @@ export default function InspectionPage() {
             {isReadOnlyFinishedWithoutPending
               ? 'Esta vistoria já foi concluída e não possui itens para editar.'
               : inspection.reopenedFromPending
-              ? 'Não há itens com pendência para exibir.'
+              ? 'Não há itens pendentes ou não conformes para exibir.'
               : 'Todos os itens desta etapa já foram tratados.'}
           </p>
         </div>
@@ -1018,7 +1028,9 @@ export default function InspectionPage() {
                             ...(currentStatus === 'CONFORME'
                               ? styles.statusButtonActiveConforme
                               : styles.statusButtonInactive),
-                            ...((isSavingThisItem || savingBulk) ? styles.disabledButton : {}),
+                            ...((isSavingThisItem || savingBulk)
+                              ? styles.disabledButton
+                              : {}),
                           }}
                         >
                           {isSavingThisItem && currentStatus === 'CONFORME'
@@ -1035,7 +1047,9 @@ export default function InspectionPage() {
                             ...(currentStatus === 'NAO_CONFORME'
                               ? styles.statusButtonActiveNaoConforme
                               : styles.statusButtonInactive),
-                            ...((isSavingThisItem || savingBulk) ? styles.disabledButton : {}),
+                            ...((isSavingThisItem || savingBulk)
+                              ? styles.disabledButton
+                              : {}),
                           }}
                         >
                           Não conforme
@@ -1057,7 +1071,9 @@ export default function InspectionPage() {
                           </div>
 
                           <div style={styles.fieldBlock}>
-                            <label style={styles.fieldLabel}>Fotos do item (máximo 2)</label>
+                            <label style={styles.fieldLabel}>
+                              Fotos do item (máximo 2)
+                            </label>
 
                             <div style={styles.photoButtonsColumn}>
                               <label style={styles.photoButton}>
@@ -1114,7 +1130,9 @@ export default function InspectionPage() {
                     </>
                   ) : (
                     <>
-                      {(item.notes || (item.photoUrls && item.photoUrls.length > 0) || item.photoUrl) && (
+                      {(item.notes ||
+                        (item.photoUrls && item.photoUrls.length > 0) ||
+                        item.photoUrl) && (
                         <div style={styles.readOnlyBlock}>
                           {item.notes ? (
                             <p style={styles.readOnlyText}>
@@ -1123,11 +1141,13 @@ export default function InspectionPage() {
                           ) : null}
 
                           <div style={styles.previewGrid}>
-                            {(Array.isArray(item.photoUrls) && item.photoUrls.length > 0
+                            {(Array.isArray(item.photoUrls) &&
+                            item.photoUrls.length > 0
                               ? item.photoUrls
                               : item.photoUrl
                               ? [item.photoUrl]
-                              : []).map((photo, index) => (
+                              : []
+                            ).map((photo, index) => (
                               <img
                                 key={index}
                                 src={photo}
