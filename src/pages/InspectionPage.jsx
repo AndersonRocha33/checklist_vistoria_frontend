@@ -78,8 +78,10 @@ function SignaturePad({ canvasRef, onChangePreview }) {
 function readFileAsDataUrl(file) {
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
+
     reader.onload = () => resolve(reader.result);
     reader.onerror = reject;
+
     reader.readAsDataURL(file);
   });
 }
@@ -125,6 +127,7 @@ export default function InspectionPage() {
   const [savingBulk, setSavingBulk] = useState(false);
   const [savedItemIds, setSavedItemIds] = useState([]);
   const [selectedLocation, setSelectedLocation] = useState('TODOS');
+  const [showSavedItems, setShowSavedItems] = useState(false);
   const [inspectorPreview, setInspectorPreview] = useState('');
   const [clientPreview, setClientPreview] = useState('');
   const [savingInspectorSignature, setSavingInspectorSignature] = useState(false);
@@ -190,6 +193,7 @@ export default function InspectionPage() {
           localPreviewUrls: [],
           isEditingNaoConforme: false,
           queuedAsConforme: false,
+          forceEdit: false,
         }))
       );
 
@@ -287,9 +291,29 @@ export default function InspectionPage() {
           localPreviewUrls: [],
           isEditingNaoConforme: false,
           queuedAsConforme: true,
+          forceEdit: item.forceEdit || false,
         };
       })
     );
+  }
+
+  function handleEditSavedItem(itemId) {
+    setSavedItemIds((prev) => prev.filter((currentId) => currentId !== itemId));
+
+    setDraftItems((prev) =>
+      prev.map((item) =>
+        item.id === itemId
+          ? {
+              ...item,
+              forceEdit: true,
+              isEditingNaoConforme: item.status === 'NAO_CONFORME',
+              queuedAsConforme: false,
+            }
+          : item
+      )
+    );
+
+    setShowSavedItems(false);
   }
 
   function handleSelectPhoto(itemId, file) {
@@ -323,6 +347,7 @@ export default function InspectionPage() {
           localPreviewUrls: currentPreviewUrls,
           isEditingNaoConforme: true,
           queuedAsConforme: false,
+          forceEdit: true,
         };
       })
     );
@@ -387,6 +412,7 @@ export default function InspectionPage() {
           localPreviewUrls: [],
           isEditingNaoConforme: false,
           queuedAsConforme: false,
+          forceEdit: false,
         };
       })
     );
@@ -452,6 +478,7 @@ export default function InspectionPage() {
         localPreviewUrls: [],
         isEditingNaoConforme: false,
         queuedAsConforme: false,
+        forceEdit: currentDraft.forceEdit || false,
       };
 
       try {
@@ -489,6 +516,7 @@ export default function InspectionPage() {
               status: 'NAO_CONFORME',
               isEditingNaoConforme: true,
               queuedAsConforme: false,
+              forceEdit: true,
             }
           : item
       )
@@ -704,6 +732,7 @@ export default function InspectionPage() {
         notes: draft?.notes ?? item.notes,
         photoUrl: mergedPhotoUrls[0] || item.photoUrl || '',
         photoUrls: mergedPhotoUrls,
+        forceEdit: Boolean(draft?.forceEdit),
       };
     });
   }, [inspection, draftItems]);
@@ -714,12 +743,20 @@ export default function InspectionPage() {
   const displayItems = useMemo(() => {
     if (!inspection) return [];
 
+    if (showSavedItems) {
+      return mergedItems;
+    }
+
     if (isReadOnlyFinishedWithoutPending) {
       return mergedItems;
     }
 
     return mergedItems.filter((item) => {
       const draft = draftItems.find((draftItem) => draftItem.id === item.id);
+
+      if (draft?.forceEdit) {
+        return true;
+      }
 
       if (inspection.reopenedFromPending) {
         const isPendingNotSaved =
@@ -753,6 +790,7 @@ export default function InspectionPage() {
     savedItemIds,
     isReadOnlyFinishedWithoutPending,
     draftItems,
+    showSavedItems,
   ]);
 
   const locations = useMemo(() => {
@@ -842,6 +880,16 @@ export default function InspectionPage() {
             Gerar relatório PDF
           </button>
 
+          <button
+            style={styles.secondaryButton}
+            onClick={() => {
+              setShowSavedItems((prev) => !prev);
+              setSelectedItemIds([]);
+            }}
+          >
+            {showSavedItems ? 'Voltar para pendentes' : 'Revisar itens salvos'}
+          </button>
+
           {!isReadOnlyFinishedWithoutPending && (
             <button
               style={styles.primaryButton}
@@ -878,7 +926,7 @@ export default function InspectionPage() {
         </div>
       )}
 
-      {!isReadOnlyFinishedWithoutPending && displayItems.length > 0 && (
+      {!isReadOnlyFinishedWithoutPending && !showSavedItems && displayItems.length > 0 && (
         <div style={styles.card}>
           <h2 style={styles.sectionTitle}>Ações em massa</h2>
 
@@ -920,6 +968,15 @@ export default function InspectionPage() {
 
           <p style={styles.selectedInfo}>
             Itens visíveis: {visibleItems.length} | Selecionados: {selectedItemIds.length}
+          </p>
+        </div>
+      )}
+
+      {showSavedItems && (
+        <div style={styles.card}>
+          <h2 style={styles.sectionTitle}>Itens já salvos</h2>
+          <p style={styles.emptyText}>
+            Para corrigir um item salvo, clique em <strong>Editar item</strong>.
           </p>
         </div>
       )}
@@ -976,7 +1033,7 @@ export default function InspectionPage() {
                     ...(isNaoConforme ? styles.itemCardExpanded : {}),
                   }}
                 >
-                  {!isReadOnlyFinishedWithoutPending && (
+                  {!isReadOnlyFinishedWithoutPending && !showSavedItems && (
                     <div style={styles.itemTopRow}>
                       <label style={styles.checkboxRowNoMargin}>
                         <input
@@ -1016,7 +1073,16 @@ export default function InspectionPage() {
                     </div>
                   </div>
 
-                  {!isReadOnlyFinishedWithoutPending ? (
+                  {showSavedItems && (
+                    <button
+                      style={styles.secondaryButton}
+                      onClick={() => handleEditSavedItem(item.id)}
+                    >
+                      Editar item
+                    </button>
+                  )}
+
+                  {!isReadOnlyFinishedWithoutPending && !showSavedItems ? (
                     <>
                       <div style={styles.statusButtonRow}>
                         <button
