@@ -316,6 +316,40 @@ export default function InspectionPage() {
     setShowSavedItems(false);
   }
 
+  async function handleDeleteChecklistItem(itemId, itemName) {
+    const confirmed = window.confirm(
+      `Tem certeza que deseja excluir o item "${itemName}" do checklist?\n\nEle será removido da vistoria, do checklist do apartamento e não aparecerá no relatório.`
+    );
+
+    if (!confirmed) return;
+
+    try {
+      await api.delete(`/inspections/item/${itemId}/checklist`);
+
+      setInspection((prev) => ({
+        ...prev,
+        items: prev.items.filter((item) => item.id !== itemId),
+      }));
+
+      setDraftItems((prev) => prev.filter((item) => item.id !== itemId));
+
+      setSavedItemIds((prev) => prev.filter((currentId) => currentId !== itemId));
+
+      setSelectedItemIds((prev) =>
+        prev.filter((currentId) => currentId !== itemId)
+      );
+
+      alert('Item excluído do checklist com sucesso.');
+    } catch (error) {
+      console.error(error);
+      alert(
+        error.response?.data?.error ||
+          error.response?.data?.message ||
+          'Erro ao excluir item do checklist.'
+      );
+    }
+  }
+
   function handleSelectPhoto(itemId, file) {
     if (!file) return;
 
@@ -1082,6 +1116,15 @@ export default function InspectionPage() {
                     </button>
                   )}
 
+                  <button
+                    style={styles.dangerButton}
+                    onClick={() =>
+                      handleDeleteChecklistItem(item.id, item.checklistItem.itemName)
+                    }
+                  >
+                    Excluir item do checklist
+                  </button>
+
                   {!isReadOnlyFinishedWithoutPending && !showSavedItems ? (
                     <>
                       <div style={styles.statusButtonRow}>
@@ -1391,6 +1434,20 @@ const styles = {
     fontSize: '1rem',
     padding: '12px 16px',
     cursor: 'pointer',
+  },
+  dangerButton: {
+    width: '100%',
+    minHeight: '48px',
+    border: 'none',
+    borderRadius: '14px',
+    background: '#fee2e2',
+    color: '#991b1b',
+    fontWeight: '700',
+    fontSize: '1rem',
+    padding: '12px 16px',
+    cursor: 'pointer',
+    marginTop: '10px',
+    marginBottom: '12px',
   },
   disabledButton: {
     opacity: 0.6,
