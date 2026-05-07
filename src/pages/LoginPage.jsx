@@ -96,6 +96,14 @@ export default function LoginPage() {
   return (
     <div style={styles.container}>
       <div style={styles.card}>
+        <div style={styles.logoBox}>
+          <div style={styles.logoIcon}>✓</div>
+          <h2 style={styles.logo}>
+            <span style={styles.logoWhite}>Spot</span>CheckList
+          </h2>
+          <p style={styles.slogan}>Pronto para morar</p>
+        </div>
+
         <h1 style={styles.title}>{modoCadastro ? 'Cadastrar' : 'Entrar'}</h1>
 
         <form onSubmit={handleSubmit} style={styles.form}>
@@ -158,11 +166,7 @@ export default function LoginPage() {
             <div style={styles.successBox}>{mensagemSucesso}</div>
           ) : null}
 
-          <button
-            type="submit"
-            style={styles.submitButton}
-            disabled={loading}
-          >
+          <button type="submit" style={styles.submitButton} disabled={loading}>
             {loading
               ? 'Carregando...'
               : modoCadastro
@@ -171,11 +175,7 @@ export default function LoginPage() {
           </button>
         </form>
 
-        <button
-          type="button"
-          onClick={alternarModo}
-          style={styles.switchButton}
-        >
+        <button type="button" onClick={alternarModo} style={styles.switchButton}>
           {modoCadastro
             ? 'Já tem conta? Fazer login'
             : 'Ainda não tem conta? Cadastre-se'}
@@ -191,24 +191,57 @@ const styles = {
     display: 'flex',
     justifyContent: 'center',
     alignItems: 'center',
-    background: '#f3f4f6',
+    background: 'radial-gradient(circle at top, #293241 0%, #151922 45%, #11151d 100%)',
     padding: '16px',
     boxSizing: 'border-box',
   },
   card: {
     width: '100%',
-    maxWidth: '420px',
-    background: '#ffffff',
-    borderRadius: '20px',
-    padding: '24px',
-    boxShadow: '0 12px 32px rgba(0, 0, 0, 0.08)',
+    maxWidth: '440px',
+    background: '#1f2530',
+    border: '1px solid #343d4d',
+    borderRadius: '24px',
+    padding: '28px',
+    boxShadow: '0 20px 60px rgba(0, 0, 0, 0.35)',
     boxSizing: 'border-box',
+  },
+  logoBox: {
+    textAlign: 'center',
+    marginBottom: '28px',
+  },
+  logoIcon: {
+    width: '70px',
+    height: '70px',
+    borderRadius: '20px',
+    background: '#f4f66b',
+    color: '#111827',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    fontSize: '2.4rem',
+    fontWeight: '900',
+    margin: '0 auto 14px auto',
+  },
+  logo: {
+    margin: 0,
+    color: '#f4f66b',
+    fontSize: '2.25rem',
+    fontWeight: '900',
+    letterSpacing: '-1px',
+  },
+  logoWhite: {
+    color: '#ffffff',
+  },
+  slogan: {
+    margin: '8px 0 0 0',
+    color: '#b7c0cd',
+    fontSize: '1rem',
   },
   title: {
     textAlign: 'center',
     margin: '0 0 24px 0',
-    fontSize: '2rem',
-    color: '#0f172a',
+    fontSize: '2.3rem',
+    color: '#ffffff',
   },
   form: {
     display: 'flex',
@@ -223,17 +256,19 @@ const styles = {
   label: {
     fontSize: '1rem',
     fontWeight: '700',
-    color: '#0f172a',
+    color: '#ffffff',
   },
   input: {
     width: '100%',
-    height: '52px',
+    height: '54px',
     padding: '0 16px',
     borderRadius: '14px',
-    border: '1px solid #cbd5e1',
+    border: '1px solid #343d4d',
     fontSize: '1rem',
     outline: 'none',
     boxSizing: 'border-box',
+    background: '#151922',
+    color: '#ffffff',
   },
   passwordWrapper: {
     display: 'flex',
@@ -244,58 +279,63 @@ const styles = {
   passwordInput: {
     flex: 1,
     minWidth: 0,
-    height: '52px',
+    height: '54px',
     padding: '0 16px',
     borderRadius: '14px',
-    border: '1px solid #cbd5e1',
+    border: '1px solid #343d4d',
     fontSize: '1rem',
     outline: 'none',
     boxSizing: 'border-box',
+    background: '#151922',
+    color: '#ffffff',
   },
   toggleButton: {
     width: '110px',
     minWidth: '110px',
-    height: '52px',
+    height: '54px',
     border: 'none',
     borderRadius: '14px',
-    background: '#2563eb',
-    color: '#ffffff',
-    fontWeight: '700',
+    background: '#f4f66b',
+    color: '#111827',
+    fontWeight: '800',
     fontSize: '1rem',
     cursor: 'pointer',
   },
   submitButton: {
     width: '100%',
-    height: '54px',
+    height: '56px',
     border: 'none',
     borderRadius: '14px',
-    background: '#2563eb',
-    color: '#ffffff',
+    background: '#f4f66b',
+    color: '#111827',
     fontSize: '1.15rem',
-    fontWeight: '700',
+    fontWeight: '900',
     cursor: 'pointer',
+    marginTop: '4px',
   },
   switchButton: {
     width: '100%',
-    marginTop: '18px',
+    marginTop: '20px',
     border: 'none',
     background: 'transparent',
-    color: '#2563eb',
+    color: '#f4f66b',
     cursor: 'pointer',
-    fontWeight: '700',
+    fontWeight: '800',
     fontSize: '1rem',
     textDecoration: 'underline',
   },
   errorBox: {
-    background: '#fee2e2',
-    color: '#dc2626',
+    background: '#3b1f25',
+    color: '#fca5a5',
+    border: '1px solid #7f1d1d',
     borderRadius: '12px',
     padding: '12px 14px',
     fontSize: '0.95rem',
   },
   successBox: {
-    background: '#dcfce7',
-    color: '#166534',
+    background: '#163323',
+    color: '#86efac',
+    border: '1px solid #166534',
     borderRadius: '12px',
     padding: '12px 14px',
     fontSize: '0.95rem',

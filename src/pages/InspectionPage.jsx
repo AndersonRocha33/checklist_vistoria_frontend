@@ -1117,15 +1117,15 @@ export default function InspectionPage() {
                   )}
 
                   {selectedItemIds.includes(item.id) && (
-  <button
-    style={styles.dangerButton}
-    onClick={() =>
-      handleDeleteChecklistItem(item.id, item.checklistItem.itemName)
-    }
-  >
-    Excluir item do checklist
-  </button>
-)}
+                      <button
+                         style={styles.dangerButton}
+                          onClick={() =>
+                            handleDeleteChecklistItem(item.id, item.checklistItem.itemName)
+                          }
+                        >
+                           Excluir item do checklist
+                       </button>
+                  )}
 
                   {!isReadOnlyFinishedWithoutPending && !showSavedItems ? (
                     <>
@@ -1360,168 +1360,193 @@ export default function InspectionPage() {
 const styles = {
   page: {
     minHeight: '100vh',
-    background: '#f3f4f6',
+    background: '#151922',
     padding: '16px',
     paddingBottom: '32px',
   },
+
   card: {
-    background: '#ffffff',
-    borderRadius: '18px',
-    padding: '16px',
-    boxShadow: '0 6px 20px rgba(0,0,0,0.08)',
+    background: '#1f2530',
+    borderRadius: '20px',
+    padding: '18px',
+    border: '1px solid #343d4d',
     marginBottom: '16px',
   },
+
   headerCard: {
-    background: '#ffffff',
-    borderRadius: '18px',
-    padding: '18px',
-    boxShadow: '0 6px 20px rgba(0,0,0,0.08)',
+    background: '#1f2530',
+    borderRadius: '20px',
+    padding: '20px',
+    border: '1px solid #343d4d',
     marginBottom: '16px',
     display: 'flex',
     flexDirection: 'column',
     gap: '16px',
   },
+
   title: {
-    fontSize: '1.9rem',
+    fontSize: '2rem',
     lineHeight: 1.15,
     marginBottom: '12px',
-    color: '#0f172a',
+    color: '#ffffff',
+    fontWeight: '800',
   },
+
   metaText: {
     fontSize: '1rem',
-    color: '#334155',
+    color: '#d1d5db',
     marginBottom: '8px',
   },
+
   reviewText: {
     fontSize: '0.95rem',
-    color: '#b45309',
-    background: '#fef3c7',
+    color: '#f4f66b',
+    background: '#3b3018',
     borderRadius: '12px',
     padding: '10px 12px',
     marginTop: '8px',
   },
+
   successNotice: {
     fontSize: '0.95rem',
-    color: '#166534',
-    background: '#dcfce7',
+    color: '#4ade80',
+    background: '#163323',
     borderRadius: '12px',
     padding: '10px 12px',
     marginTop: '8px',
   },
+
   headerButtons: {
     display: 'flex',
     flexDirection: 'column',
     gap: '10px',
   },
+
   primaryButton: {
     width: '100%',
-    minHeight: '48px',
+    minHeight: '50px',
     border: 'none',
     borderRadius: '14px',
-    background: '#2563eb',
-    color: '#ffffff',
-    fontWeight: '700',
+    background: '#f4f66b',
+    color: '#111827',
+    fontWeight: '800',
     fontSize: '1rem',
     padding: '12px 16px',
     cursor: 'pointer',
   },
+
   secondaryButton: {
     width: '100%',
-    minHeight: '48px',
-    border: 'none',
+    minHeight: '50px',
+    border: '1px solid #343d4d',
     borderRadius: '14px',
-    background: '#e2e8f0',
-    color: '#0f172a',
-    fontWeight: '700',
+    background: '#222938',
+    color: '#ffffff',
+    fontWeight: '800',
     fontSize: '1rem',
     padding: '12px 16px',
     cursor: 'pointer',
   },
+
   dangerButton: {
     width: '100%',
-    minHeight: '48px',
+    minHeight: '50px',
     border: 'none',
     borderRadius: '14px',
-    background: '#fee2e2',
-    color: '#991b1b',
-    fontWeight: '700',
+    background: '#ef4444',
+    color: '#ffffff',
+    fontWeight: '800',
     fontSize: '1rem',
     padding: '12px 16px',
     cursor: 'pointer',
     marginTop: '10px',
     marginBottom: '12px',
   },
+
   disabledButton: {
     opacity: 0.6,
     cursor: 'not-allowed',
   },
+
   sectionTitle: {
-    fontSize: '1.3rem',
-    marginBottom: '12px',
-    color: '#0f172a',
+    fontSize: '1.35rem',
+    marginBottom: '14px',
+    color: '#ffffff',
   },
+
   checkboxRow: {
     display: 'flex',
     alignItems: 'center',
     gap: '10px',
-    fontWeight: '600',
+    fontWeight: '700',
     fontSize: '1rem',
-    color: '#0f172a',
+    color: '#ffffff',
     marginBottom: '12px',
   },
+
   checkboxRowNoMargin: {
     display: 'flex',
     alignItems: 'center',
     gap: '10px',
-    fontWeight: '600',
+    fontWeight: '700',
     fontSize: '0.95rem',
-    color: '#0f172a',
+    color: '#ffffff',
     margin: 0,
   },
+
   bulkColumn: {
     display: 'flex',
     flexDirection: 'column',
     gap: '10px',
   },
+
   selectedInfo: {
     marginTop: '10px',
-    color: '#475569',
-    fontWeight: '600',
+    color: '#b7c0cd',
+    fontWeight: '700',
   },
+
   groupSection: {
     marginBottom: '18px',
   },
+
   groupTitle: {
-    fontSize: '1.5rem',
-    color: '#111827',
-    marginBottom: '10px',
+    fontSize: '1.6rem',
+    color: '#f4f66b',
+    marginBottom: '12px',
     paddingLeft: '4px',
+    fontWeight: '800',
   },
+
   itemsColumn: {
     display: 'flex',
     flexDirection: 'column',
     gap: '14px',
   },
+
   itemCard: {
-    background: '#ffffff',
-    borderRadius: '18px',
-    padding: '16px',
-    boxShadow: '0 6px 20px rgba(0,0,0,0.08)',
-    border: '1px solid #e5e7eb',
+    background: '#1f2530',
+    borderRadius: '20px',
+    padding: '18px',
+    border: '1px solid #343d4d',
   },
+
   itemCardCompact: {
     paddingBottom: '14px',
   },
+
   itemCardExpanded: {
-    border: '1px solid #fecaca',
-    background: '#fffafa',
+    border: '1px solid #7f1d1d',
+    background: '#2a1f25',
   },
+
   itemTopRow: {
     display: 'flex',
     justifyContent: 'space-between',
     alignItems: 'center',
     marginBottom: '8px',
   },
+
   itemHeaderCompact: {
     display: 'flex',
     justifyContent: 'space-between',
@@ -1530,160 +1555,186 @@ const styles = {
     marginBottom: '12px',
     flexWrap: 'wrap',
   },
+
   itemMainInfo: {
     flex: 1,
     minWidth: '220px',
   },
+
   itemTitleCompact: {
-    fontSize: '1.05rem',
+    fontSize: '1.08rem',
     lineHeight: 1.3,
     margin: 0,
-    color: '#0f172a',
+    color: '#ffffff',
+    fontWeight: '700',
   },
+
   itemSubInfo: {
     margin: '6px 0 0 0',
-    color: '#475569',
+    color: '#b7c0cd',
     fontSize: '0.95rem',
   },
+
   statusInlineBadge: {
     borderRadius: '999px',
-    padding: '8px 12px',
+    padding: '8px 14px',
     fontSize: '0.88rem',
-    fontWeight: '700',
+    fontWeight: '800',
     whiteSpace: 'nowrap',
   },
+
   statusInlineConforme: {
-    background: '#dcfce7',
-    color: '#166534',
+    background: '#16a34a',
+    color: '#ffffff',
   },
+
   statusInlineNaoConforme: {
-    background: '#fee2e2',
-    color: '#991b1b',
+    background: '#ef4444',
+    color: '#ffffff',
   },
+
   statusInlinePendente: {
-    background: '#fef3c7',
-    color: '#92400e',
+    background: '#f59e0b',
+    color: '#ffffff',
   },
+
   fieldBlock: {
     marginBottom: '14px',
   },
+
   fieldLabel: {
     display: 'block',
-    fontWeight: '700',
+    fontWeight: '800',
     marginBottom: '8px',
-    color: '#0f172a',
+    color: '#ffffff',
   },
+
   input: {
     width: '100%',
-    minHeight: '48px',
+    minHeight: '50px',
     borderRadius: '14px',
-    border: '1px solid #cbd5e1',
+    border: '1px solid #343d4d',
     padding: '12px 14px',
     fontSize: '1rem',
-    background: '#ffffff',
-    color: '#111827',
+    background: '#151922',
+    color: '#ffffff',
   },
+
   statusButtonRow: {
     display: 'grid',
     gridTemplateColumns: '1fr 1fr',
     gap: '10px',
     marginBottom: '14px',
   },
+
   statusButton: {
-    minHeight: '48px',
+    minHeight: '50px',
     borderRadius: '14px',
     border: 'none',
-    fontWeight: '700',
-    fontSize: '0.98rem',
+    fontWeight: '800',
+    fontSize: '1rem',
     padding: '12px 16px',
     cursor: 'pointer',
   },
+
   statusButtonInactive: {
-    background: '#e2e8f0',
-    color: '#0f172a',
+    background: '#293241',
+    color: '#ffffff',
   },
+
   statusButtonActiveConforme: {
     background: '#16a34a',
     color: '#ffffff',
   },
+
   statusButtonActiveNaoConforme: {
-    background: '#dc2626',
+    background: '#ef4444',
     color: '#ffffff',
   },
+
   textarea: {
     width: '100%',
     minHeight: '100px',
     borderRadius: '14px',
-    border: '1px solid #cbd5e1',
+    border: '1px solid #343d4d',
     padding: '12px 14px',
     fontSize: '1rem',
     resize: 'vertical',
-    background: '#ffffff',
-    color: '#111827',
+    background: '#151922',
+    color: '#ffffff',
   },
+
   photoButtonsColumn: {
     display: 'flex',
     flexDirection: 'column',
     gap: '10px',
   },
+
   photoButton: {
     width: '100%',
-    minHeight: '48px',
+    minHeight: '50px',
     borderRadius: '14px',
-    background: '#2563eb',
-    color: '#ffffff',
+    background: '#f4f66b',
+    color: '#111827',
     display: 'flex',
     alignItems: 'center',
     justifyContent: 'center',
-    fontWeight: '700',
+    fontWeight: '800',
     padding: '12px 16px',
     cursor: 'pointer',
   },
+
   photoButtonSecondary: {
     width: '100%',
-    minHeight: '48px',
+    minHeight: '50px',
     borderRadius: '14px',
-    background: '#475569',
+    background: '#374151',
     color: '#ffffff',
     display: 'flex',
     alignItems: 'center',
     justifyContent: 'center',
-    fontWeight: '700',
+    fontWeight: '800',
     padding: '12px 16px',
     cursor: 'pointer',
   },
+
   fileName: {
     marginTop: '10px',
-    color: '#475569',
+    color: '#b7c0cd',
     fontSize: '0.95rem',
   },
+
   previewGrid: {
     display: 'grid',
     gridTemplateColumns: '1fr 1fr',
     gap: '10px',
     marginTop: '12px',
   },
+
   imagePreview: {
     width: '100%',
     maxHeight: '260px',
     objectFit: 'cover',
     borderRadius: '14px',
-    marginTop: '0',
-    border: '1px solid #e2e8f0',
+    border: '1px solid #343d4d',
   },
+
   readOnlyBlock: {
     marginTop: '8px',
   },
+
   readOnlyText: {
     margin: '0 0 8px 0',
-    color: '#334155',
+    color: '#d1d5db',
   },
+
   signatureBox: {
-    border: '2px dashed #cbd5e1',
+    border: '2px dashed #343d4d',
     borderRadius: '16px',
     overflow: 'hidden',
     background: '#ffffff',
   },
+
   signatureCanvas: {
     width: '100%',
     height: '220px',
@@ -1691,24 +1742,28 @@ const styles = {
     background: '#ffffff',
     touchAction: 'none',
   },
+
   signaturePreview: {
     width: '100%',
     borderRadius: '14px',
     marginTop: '12px',
-    border: '1px solid #e2e8f0',
+    border: '1px solid #343d4d',
   },
+
   signatureButtons: {
     display: 'flex',
     flexDirection: 'column',
     gap: '10px',
     marginTop: '12px',
   },
+
   loadingText: {
-    color: '#334155',
+    color: '#d1d5db',
     fontSize: '1rem',
   },
+
   emptyText: {
-    color: '#475569',
+    color: '#b7c0cd',
     fontSize: '1rem',
   },
 };

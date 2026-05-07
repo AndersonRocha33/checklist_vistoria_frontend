@@ -459,13 +459,16 @@ export default function DashboardPage() {
   );
 }
 
+// SUBSTITUA SOMENTE ESTE BLOCO no DashboardPage.jsx
+
 const styles = {
   page: {
     minHeight: '100vh',
-    background: '#f3f4f6',
+    background: '#151922',
     padding: '24px',
     boxSizing: 'border-box',
   },
+
   topbar: {
     display: 'flex',
     justifyContent: 'space-between',
@@ -473,31 +476,44 @@ const styles = {
     gap: '16px',
     marginBottom: '24px',
     flexWrap: 'wrap',
+    background: '#1f2530',
+    border: '1px solid #343d4d',
+    borderRadius: '20px',
+    padding: '20px',
   },
+
   pageTitle: {
     margin: 0,
-    fontSize: '2rem',
-    color: '#0f172a',
+    fontSize: '2.2rem',
+    color: '#ffffff',
+    fontWeight: '800',
   },
+
   pageSubtitle: {
     margin: '8px 0 0 0',
-    color: '#475569',
+    color: '#b7c0cd',
   },
+
   card: {
-    background: '#ffffff',
-    borderRadius: '18px',
-    padding: '20px',
-    boxShadow: '0 10px 30px rgba(0,0,0,0.06)',
+    background: '#1f2530',
+    borderRadius: '20px',
+    padding: '22px',
+    border: '1px solid #343d4d',
     marginBottom: '20px',
   },
+
   sectionTitle: {
-    margin: '0 0 16px 0',
-    color: '#0f172a',
+    margin: '0 0 18px 0',
+    color: '#ffffff',
+    fontSize: '1.4rem',
   },
+
   sectionTitleNoMargin: {
     margin: 0,
-    color: '#0f172a',
+    color: '#ffffff',
+    fontSize: '1.4rem',
   },
+
   sectionHeader: {
     display: 'flex',
     justifyContent: 'space-between',
@@ -506,163 +522,196 @@ const styles = {
     marginBottom: '16px',
     flexWrap: 'wrap',
   },
+
   enterpriseCount: {
-    color: '#475569',
-    fontWeight: '600',
+    color: '#b7c0cd',
+    fontWeight: '700',
   },
+
   enterpriseList: {
     display: 'flex',
     flexDirection: 'column',
-    gap: '12px',
+    gap: '14px',
   },
+
   enterpriseRow: {
     display: 'flex',
     justifyContent: 'space-between',
     alignItems: 'center',
     gap: '16px',
-    padding: '14px 16px',
-    borderRadius: '14px',
-    border: '1px solid #e2e8f0',
-    background: '#f8fafc',
+    padding: '16px',
+    borderRadius: '16px',
+    border: '1px solid #343d4d',
+    background: '#222938',
     flexWrap: 'wrap',
   },
+
   enterpriseInfo: {
     display: 'flex',
     flexDirection: 'column',
     gap: '6px',
   },
+
   enterpriseName: {
     margin: 0,
-    fontWeight: '700',
-    color: '#0f172a',
-    fontSize: '1rem',
+    fontWeight: '800',
+    color: '#ffffff',
+    fontSize: '1.05rem',
   },
+
   enterpriseMeta: {
     margin: 0,
-    color: '#64748b',
+    color: '#b7c0cd',
     fontSize: '0.95rem',
   },
+
   emptyText: {
     margin: 0,
-    color: '#64748b',
+    color: '#b7c0cd',
   },
+
   form: {
     display: 'flex',
     gap: '12px',
     flexWrap: 'wrap',
     alignItems: 'center',
   },
+
   filtersGrid: {
     display: 'grid',
     gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))',
-    gap: '12px',
+    gap: '14px',
   },
+
   input: {
     width: '100%',
-    height: '46px',
+    height: '50px',
     padding: '0 14px',
-    borderRadius: '12px',
-    border: '1px solid #cbd5e1',
+    borderRadius: '14px',
+    border: '1px solid #343d4d',
     fontSize: '1rem',
     boxSizing: 'border-box',
     outline: 'none',
+    background: '#151922',
+    color: '#ffffff',
   },
+
   metricsGrid: {
     display: 'grid',
     gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))',
     gap: '16px',
     marginBottom: '20px',
   },
+
   metricCard: {
-    background: '#ffffff',
-    borderRadius: '18px',
-    padding: '18px',
-    boxShadow: '0 10px 30px rgba(0,0,0,0.06)',
+    background: '#1f2530',
+    borderRadius: '20px',
+    padding: '22px',
+    border: '1px solid #343d4d',
   },
+
   metricTitle: {
     margin: 0,
     fontSize: '1rem',
-    color: '#475569',
+    color: '#b7c0cd',
   },
+
   metricValue: {
     margin: '10px 0 0 0',
-    fontSize: '2rem',
-    fontWeight: '700',
-    color: '#0f172a',
+    fontSize: '2.3rem',
+    fontWeight: '800',
+    color: '#f4f66b',
   },
+
   apartmentGrid: {
     display: 'grid',
-    gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))',
-    gap: '16px',
+    gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))',
+    gap: '18px',
   },
+
   apartmentCard: {
-    background: '#ffffff',
-    borderRadius: '18px',
-    padding: '20px',
-    boxShadow: '0 10px 30px rgba(0,0,0,0.06)',
+    background: '#1f2530',
+    borderRadius: '20px',
+    padding: '22px',
+    border: '1px solid #343d4d',
     display: 'flex',
     flexDirection: 'column',
-    gap: '8px',
+    gap: '10px',
   },
+
   enterpriseLabel: {
     margin: 0,
-    color: '#64748b',
+    color: '#b7c0cd',
     fontSize: '0.95rem',
   },
+
   apartmentTitle: {
     margin: 0,
-    color: '#0f172a',
+    color: '#ffffff',
+    fontSize: '1.5rem',
+    fontWeight: '800',
   },
+
   infoText: {
     margin: 0,
-    color: '#334155',
+    color: '#d1d5db',
+    fontSize: '0.96rem',
   },
+
   statusBadge: {
     display: 'inline-block',
     borderRadius: '999px',
-    padding: '8px 12px',
+    padding: '10px 14px',
     fontSize: '0.9rem',
-    fontWeight: '700',
+    fontWeight: '800',
     width: 'fit-content',
     marginTop: '6px',
     marginBottom: '8px',
   },
+
   primaryButton: {
-    height: '44px',
+    height: '48px',
     border: 'none',
-    borderRadius: '12px',
-    background: '#2563eb',
-    color: '#ffffff',
-    fontWeight: '700',
+    borderRadius: '14px',
+    background: '#f4f66b',
+    color: '#111827',
+    fontWeight: '800',
     cursor: 'pointer',
-    padding: '0 16px',
+    padding: '0 18px',
+    fontSize: '1rem',
   },
+
   secondaryButton: {
-    height: '44px',
-    border: 'none',
-    borderRadius: '12px',
-    background: '#e2e8f0',
-    color: '#0f172a',
-    fontWeight: '700',
-    cursor: 'pointer',
-    padding: '0 16px',
-  },
-  dangerButton: {
-    minHeight: '44px',
-    border: 'none',
-    borderRadius: '12px',
-    background: '#dc2626',
+    height: '48px',
+    border: '1px solid #343d4d',
+    borderRadius: '14px',
+    background: '#222938',
     color: '#ffffff',
-    fontWeight: '700',
+    fontWeight: '800',
     cursor: 'pointer',
-    padding: '0 16px',
+    padding: '0 18px',
   },
+
+  dangerButton: {
+    minHeight: '46px',
+    border: 'none',
+    borderRadius: '14px',
+    background: '#ef4444',
+    color: '#ffffff',
+    fontWeight: '800',
+    cursor: 'pointer',
+    padding: '0 18px',
+  },
+
   successText: {
-    marginTop: '12px',
-    color: '#166534',
+    marginTop: '14px',
+    color: '#4ade80',
+    fontWeight: '700',
   },
+
   errorText: {
-    marginTop: '12px',
-    color: '#dc2626',
+    marginTop: '14px',
+    color: '#f87171',
+    fontWeight: '700',
   },
 };
