@@ -1116,14 +1116,16 @@ export default function InspectionPage() {
                     </button>
                   )}
 
-                  <button
-                    style={styles.dangerButton}
-                    onClick={() =>
-                      handleDeleteChecklistItem(item.id, item.checklistItem.itemName)
-                    }
-                  >
-                    Excluir item do checklist
-                  </button>
+                  {selectedItemIds.includes(item.id) && (
+  <button
+    style={styles.dangerButton}
+    onClick={() =>
+      handleDeleteChecklistItem(item.id, item.checklistItem.itemName)
+    }
+  >
+    Excluir item do checklist
+  </button>
+)}
 
                   {!isReadOnlyFinishedWithoutPending && !showSavedItems ? (
                     <>
