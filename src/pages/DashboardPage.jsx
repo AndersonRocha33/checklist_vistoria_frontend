@@ -166,20 +166,20 @@ export default function DashboardPage() {
   function getStatusStyle(status) {
     const stylesByStatus = {
       NAO_VISTORIADO: {
-        background: '#e5e7eb',
-        color: '#374151',
+        background: '#4b5563',
+        color: '#ffffff',
       },
       EM_VISTORIA: {
-        background: '#dbeafe',
-        color: '#1d4ed8',
+        background: '#2563eb',
+        color: '#ffffff',
       },
       VISTORIADO: {
-        background: '#dcfce7',
-        color: '#166534',
+        background: '#16a34a',
+        color: '#ffffff',
       },
       VISTORIADO_COM_PENDENCIA: {
-        background: '#fef3c7',
-        color: '#92400e',
+        background: '#f59e0b',
+        color: '#ffffff',
       },
     };
 
@@ -281,12 +281,21 @@ export default function DashboardPage() {
         <h2 style={styles.sectionTitle}>Importar checklist via CSV</h2>
 
         <form onSubmit={handleCsvUpload} style={styles.form}>
+          <label htmlFor="csv-input" style={styles.fileButton}>
+            Escolher arquivo
+          </label>
+
           <input
             id="csv-input"
             type="file"
             accept=".csv"
             onChange={(e) => setCsvFile(e.target.files[0])}
+            style={{ display: 'none' }}
           />
+
+          <span style={styles.fileName}>
+            {csvFile ? csvFile.name : 'Nenhum arquivo escolhido'}
+          </span>
 
           <button type="submit" disabled={uploading} style={styles.primaryButton}>
             {uploading ? 'Importando...' : 'Importar CSV'}
@@ -300,9 +309,7 @@ export default function DashboardPage() {
       <div style={styles.card}>
         <div style={styles.sectionHeader}>
           <h2 style={styles.sectionTitleNoMargin}>Empreendimentos cadastrados</h2>
-          <span style={styles.enterpriseCount}>
-            Total: {enterprises.length}
-          </span>
+          <span style={styles.enterpriseCount}>Total: {enterprises.length}</span>
         </div>
 
         {enterprises.length === 0 ? (
@@ -417,7 +424,7 @@ export default function DashboardPage() {
 
       {filteredApartments.length === 0 ? (
         <div style={styles.card}>
-          <p style={{ margin: 0 }}>
+          <p style={{ margin: 0, color: '#b7c0cd' }}>
             Nenhum apartamento encontrado com os filtros atuais.
           </p>
         </div>
@@ -428,13 +435,9 @@ export default function DashboardPage() {
           <div key={apartment.id} style={styles.apartmentCard}>
             <p style={styles.enterpriseLabel}>{apartment.enterpriseName}</p>
             <h3 style={styles.apartmentTitle}>Apto {apartment.number}</h3>
-            <p style={styles.infoText}>
-              Itens distintos: {apartment.totalDistinctItems}
-            </p>
+            <p style={styles.infoText}>Itens distintos: {apartment.totalDistinctItems}</p>
             <p style={styles.infoText}>Conformes: {apartment.conformeCount}</p>
-            <p style={styles.infoText}>
-              Não conformes: {apartment.naoConformeCount}
-            </p>
+            <p style={styles.infoText}>Não conformes: {apartment.naoConformeCount}</p>
             <p style={styles.infoText}>Pendentes: {apartment.pendenteCount}</p>
 
             <div
@@ -459,8 +462,6 @@ export default function DashboardPage() {
   );
 }
 
-// SUBSTITUA SOMENTE ESTE BLOCO no DashboardPage.jsx
-
 const styles = {
   page: {
     minHeight: '100vh',
@@ -468,7 +469,6 @@ const styles = {
     padding: '24px',
     boxSizing: 'border-box',
   },
-
   topbar: {
     display: 'flex',
     justifyContent: 'space-between',
@@ -481,19 +481,16 @@ const styles = {
     borderRadius: '20px',
     padding: '20px',
   },
-
   pageTitle: {
     margin: 0,
     fontSize: '2.2rem',
     color: '#ffffff',
     fontWeight: '800',
   },
-
   pageSubtitle: {
     margin: '8px 0 0 0',
     color: '#b7c0cd',
   },
-
   card: {
     background: '#1f2530',
     borderRadius: '20px',
@@ -501,19 +498,16 @@ const styles = {
     border: '1px solid #343d4d',
     marginBottom: '20px',
   },
-
   sectionTitle: {
     margin: '0 0 18px 0',
     color: '#ffffff',
     fontSize: '1.4rem',
   },
-
   sectionTitleNoMargin: {
     margin: 0,
     color: '#ffffff',
     fontSize: '1.4rem',
   },
-
   sectionHeader: {
     display: 'flex',
     justifyContent: 'space-between',
@@ -522,18 +516,15 @@ const styles = {
     marginBottom: '16px',
     flexWrap: 'wrap',
   },
-
   enterpriseCount: {
     color: '#b7c0cd',
     fontWeight: '700',
   },
-
   enterpriseList: {
     display: 'flex',
     flexDirection: 'column',
     gap: '14px',
   },
-
   enterpriseRow: {
     display: 'flex',
     justifyContent: 'space-between',
@@ -545,44 +536,54 @@ const styles = {
     background: '#222938',
     flexWrap: 'wrap',
   },
-
   enterpriseInfo: {
     display: 'flex',
     flexDirection: 'column',
     gap: '6px',
   },
-
   enterpriseName: {
     margin: 0,
     fontWeight: '800',
     color: '#ffffff',
     fontSize: '1.05rem',
   },
-
   enterpriseMeta: {
     margin: 0,
     color: '#b7c0cd',
     fontSize: '0.95rem',
   },
-
   emptyText: {
     margin: 0,
     color: '#b7c0cd',
   },
-
   form: {
     display: 'flex',
     gap: '12px',
     flexWrap: 'wrap',
     alignItems: 'center',
   },
-
+  fileButton: {
+    minHeight: '46px',
+    display: 'inline-flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: '0 16px',
+    borderRadius: '12px',
+    border: '1px solid #343d4d',
+    background: '#222938',
+    color: '#ffffff',
+    fontWeight: '700',
+    cursor: 'pointer',
+  },
+  fileName: {
+    color: '#d1d5db',
+    fontSize: '0.95rem',
+  },
   filtersGrid: {
     display: 'grid',
     gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))',
     gap: '14px',
   },
-
   input: {
     width: '100%',
     height: '50px',
@@ -595,40 +596,34 @@ const styles = {
     background: '#151922',
     color: '#ffffff',
   },
-
   metricsGrid: {
     display: 'grid',
     gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))',
     gap: '16px',
     marginBottom: '20px',
   },
-
   metricCard: {
     background: '#1f2530',
     borderRadius: '20px',
     padding: '22px',
     border: '1px solid #343d4d',
   },
-
   metricTitle: {
     margin: 0,
     fontSize: '1rem',
     color: '#b7c0cd',
   },
-
   metricValue: {
     margin: '10px 0 0 0',
     fontSize: '2.3rem',
     fontWeight: '800',
     color: '#f4f66b',
   },
-
   apartmentGrid: {
     display: 'grid',
     gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))',
     gap: '18px',
   },
-
   apartmentCard: {
     background: '#1f2530',
     borderRadius: '20px',
@@ -638,26 +633,22 @@ const styles = {
     flexDirection: 'column',
     gap: '10px',
   },
-
   enterpriseLabel: {
     margin: 0,
     color: '#b7c0cd',
     fontSize: '0.95rem',
   },
-
   apartmentTitle: {
     margin: 0,
     color: '#ffffff',
     fontSize: '1.5rem',
     fontWeight: '800',
   },
-
   infoText: {
     margin: 0,
     color: '#d1d5db',
     fontSize: '0.96rem',
   },
-
   statusBadge: {
     display: 'inline-block',
     borderRadius: '999px',
@@ -668,7 +659,6 @@ const styles = {
     marginTop: '6px',
     marginBottom: '8px',
   },
-
   primaryButton: {
     height: '48px',
     border: 'none',
@@ -680,7 +670,6 @@ const styles = {
     padding: '0 18px',
     fontSize: '1rem',
   },
-
   secondaryButton: {
     height: '48px',
     border: '1px solid #343d4d',
@@ -691,7 +680,6 @@ const styles = {
     cursor: 'pointer',
     padding: '0 18px',
   },
-
   dangerButton: {
     minHeight: '46px',
     border: 'none',
@@ -702,13 +690,11 @@ const styles = {
     cursor: 'pointer',
     padding: '0 18px',
   },
-
   successText: {
     marginTop: '14px',
     color: '#4ade80',
     fontWeight: '700',
   },
-
   errorText: {
     marginTop: '14px',
     color: '#f87171',

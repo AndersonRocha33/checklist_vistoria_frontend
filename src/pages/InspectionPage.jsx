@@ -971,6 +971,7 @@ export default function InspectionPage() {
               onChange={(e) =>
                 toggleSelectAllVisibleItems(e.target.checked, visibleItems)
               }
+              style={styles.smallCheckbox}
             />
             <span>Selecionar todos os itens visíveis</span>
           </label>
@@ -1063,47 +1064,86 @@ export default function InspectionPage() {
                   key={item.id}
                   style={{
                     ...styles.itemCard,
-                    ...(isConforme ? styles.itemCardCompact : {}),
                     ...(isNaoConforme ? styles.itemCardExpanded : {}),
                   }}
                 >
-                  {!isReadOnlyFinishedWithoutPending && !showSavedItems && (
-                    <div style={styles.itemTopRow}>
-                      <label style={styles.checkboxRowNoMargin}>
-                        <input
-                          type="checkbox"
-                          checked={selectedItemIds.includes(item.id)}
-                          onChange={() => toggleItemSelection(item.id)}
-                          disabled={isSavingThisItem || savingBulk}
-                        />
-                        <span>Selecionar</span>
-                      </label>
-                    </div>
-                  )}
+                  <div style={styles.itemCompactRow}>
+                    <div style={styles.itemLeftArea}>
+                      {!isReadOnlyFinishedWithoutPending && !showSavedItems && (
+                        <label style={styles.checkboxRowNoMargin}>
+                          <input
+                            type="checkbox"
+                            checked={selectedItemIds.includes(item.id)}
+                            onChange={() => toggleItemSelection(item.id)}
+                            disabled={isSavingThisItem || savingBulk}
+                            style={styles.smallCheckbox}
+                          />
+                          <span>Selecionar</span>
+                        </label>
+                      )}
 
-                  <div style={styles.itemHeaderCompact}>
-                    <div style={styles.itemMainInfo}>
-                      <h3 style={styles.itemTitleCompact}>{item.checklistItem.itemName}</h3>
+                      <h3 style={styles.itemTitleCompact}>
+                        {item.checklistItem.itemName}
+                      </h3>
+
                       <p style={styles.itemSubInfo}>
                         Quantidade: {item.checklistItem.quantity}
                       </p>
                     </div>
 
-                    <div
-                      style={{
-                        ...styles.statusInlineBadge,
-                        ...(isConforme
-                          ? styles.statusInlineConforme
+                    <div style={styles.itemRightArea}>
+                      <div
+                        style={{
+                          ...styles.statusInlineBadge,
+                          ...(isConforme
+                            ? styles.statusInlineConforme
+                            : currentStatus === 'NAO_CONFORME'
+                            ? styles.statusInlineNaoConforme
+                            : styles.statusInlinePendente),
+                        }}
+                      >
+                        {currentStatus === 'CONFORME'
+                          ? 'Conforme'
                           : currentStatus === 'NAO_CONFORME'
-                          ? styles.statusInlineNaoConforme
-                          : styles.statusInlinePendente),
-                      }}
-                    >
-                      {currentStatus === 'CONFORME'
-                        ? 'Conforme'
-                        : currentStatus === 'NAO_CONFORME'
-                        ? 'Não conforme'
-                        : 'Pendente'}
+                          ? 'Não conforme'
+                          : 'Pendente'}
+                      </div>
+
+                      {!isReadOnlyFinishedWithoutPending && !showSavedItems && (
+                        <div style={styles.iconActionsRow}>
+                          <button
+                            type="button"
+                            title="Marcar como conforme"
+                            onClick={() => handleStatusChange(item.id, 'CONFORME')}
+                            disabled={isSavingThisItem || savingBulk}
+                            style={{
+                              ...styles.iconButton,
+                              ...styles.iconButtonConforme,
+                              ...((isSavingThisItem || savingBulk)
+                                ? styles.disabledButton
+                                : {}),
+                            }}
+                          >
+                            ✓
+                          </button>
+
+                          <button
+                            type="button"
+                            title="Marcar como não conforme"
+                            onClick={() => handleStatusChange(item.id, 'NAO_CONFORME')}
+                            disabled={isSavingThisItem || savingBulk}
+                            style={{
+                              ...styles.iconButton,
+                              ...styles.iconButtonNaoConforme,
+                              ...((isSavingThisItem || savingBulk)
+                                ? styles.disabledButton
+                                : {}),
+                            }}
+                          >
+                            ✕
+                          </button>
+                        </div>
+                      )}
                     </div>
                   </div>
 
@@ -1116,59 +1156,21 @@ export default function InspectionPage() {
                     </button>
                   )}
 
-                  {selectedItemIds.includes(item.id) && (
-                      <button
-                         style={styles.dangerButton}
-                          onClick={() =>
-                            handleDeleteChecklistItem(item.id, item.checklistItem.itemName)
-                          }
-                        >
-                           Excluir item do checklist
-                       </button>
+                  {selectedItemIds.includes(item.id) && !showSavedItems && (
+                    <button
+                      style={styles.dangerButton}
+                      onClick={() =>
+                        handleDeleteChecklistItem(item.id, item.checklistItem.itemName)
+                      }
+                    >
+                      Excluir item do checklist
+                    </button>
                   )}
 
                   {!isReadOnlyFinishedWithoutPending && !showSavedItems ? (
                     <>
-                      <div style={styles.statusButtonRow}>
-                        <button
-                          type="button"
-                          onClick={() => handleStatusChange(item.id, 'CONFORME')}
-                          disabled={isSavingThisItem || savingBulk}
-                          style={{
-                            ...styles.statusButton,
-                            ...(currentStatus === 'CONFORME'
-                              ? styles.statusButtonActiveConforme
-                              : styles.statusButtonInactive),
-                            ...((isSavingThisItem || savingBulk)
-                              ? styles.disabledButton
-                              : {}),
-                          }}
-                        >
-                          {isSavingThisItem && currentStatus === 'CONFORME'
-                            ? 'Salvando...'
-                            : 'Conforme'}
-                        </button>
-
-                        <button
-                          type="button"
-                          onClick={() => handleStatusChange(item.id, 'NAO_CONFORME')}
-                          disabled={isSavingThisItem || savingBulk}
-                          style={{
-                            ...styles.statusButton,
-                            ...(currentStatus === 'NAO_CONFORME'
-                              ? styles.statusButtonActiveNaoConforme
-                              : styles.statusButtonInactive),
-                            ...((isSavingThisItem || savingBulk)
-                              ? styles.disabledButton
-                              : {}),
-                          }}
-                        >
-                          Não conforme
-                        </button>
-                      </div>
-
                       {isNaoConforme && (
-                        <>
+                        <div style={styles.naoConformeBox}>
                           <div style={styles.fieldBlock}>
                             <label style={styles.fieldLabel}>Observações</label>
                             <textarea
@@ -1236,7 +1238,7 @@ export default function InspectionPage() {
                           >
                             {isSavingThisItem ? 'Salvando...' : 'Salvar item'}
                           </button>
-                        </>
+                        </div>
                       )}
                     </>
                   ) : (
@@ -1364,7 +1366,6 @@ const styles = {
     padding: '16px',
     paddingBottom: '32px',
   },
-
   card: {
     background: '#1f2530',
     borderRadius: '20px',
@@ -1372,7 +1373,6 @@ const styles = {
     border: '1px solid #343d4d',
     marginBottom: '16px',
   },
-
   headerCard: {
     background: '#1f2530',
     borderRadius: '20px',
@@ -1383,7 +1383,6 @@ const styles = {
     flexDirection: 'column',
     gap: '16px',
   },
-
   title: {
     fontSize: '2rem',
     lineHeight: 1.15,
@@ -1391,13 +1390,11 @@ const styles = {
     color: '#ffffff',
     fontWeight: '800',
   },
-
   metaText: {
     fontSize: '1rem',
     color: '#d1d5db',
     marginBottom: '8px',
   },
-
   reviewText: {
     fontSize: '0.95rem',
     color: '#f4f66b',
@@ -1406,7 +1403,6 @@ const styles = {
     padding: '10px 12px',
     marginTop: '8px',
   },
-
   successNotice: {
     fontSize: '0.95rem',
     color: '#4ade80',
@@ -1415,13 +1411,11 @@ const styles = {
     padding: '10px 12px',
     marginTop: '8px',
   },
-
   headerButtons: {
     display: 'flex',
     flexDirection: 'column',
     gap: '10px',
   },
-
   primaryButton: {
     width: '100%',
     minHeight: '50px',
@@ -1434,7 +1428,6 @@ const styles = {
     padding: '12px 16px',
     cursor: 'pointer',
   },
-
   secondaryButton: {
     width: '100%',
     minHeight: '50px',
@@ -1447,10 +1440,9 @@ const styles = {
     padding: '12px 16px',
     cursor: 'pointer',
   },
-
   dangerButton: {
     width: '100%',
-    minHeight: '50px',
+    minHeight: '48px',
     border: 'none',
     borderRadius: '14px',
     background: '#ef4444',
@@ -1459,21 +1451,17 @@ const styles = {
     fontSize: '1rem',
     padding: '12px 16px',
     cursor: 'pointer',
-    marginTop: '10px',
-    marginBottom: '12px',
+    marginTop: '14px',
   },
-
   disabledButton: {
     opacity: 0.6,
     cursor: 'not-allowed',
   },
-
   sectionTitle: {
     fontSize: '1.35rem',
     marginBottom: '14px',
     color: '#ffffff',
   },
-
   checkboxRow: {
     display: 'flex',
     alignItems: 'center',
@@ -1483,33 +1471,33 @@ const styles = {
     color: '#ffffff',
     marginBottom: '12px',
   },
-
   checkboxRowNoMargin: {
     display: 'flex',
     alignItems: 'center',
-    gap: '10px',
+    gap: '8px',
     fontWeight: '700',
-    fontSize: '0.95rem',
+    fontSize: '0.88rem',
     color: '#ffffff',
     margin: 0,
   },
-
+  smallCheckbox: {
+    width: '16px',
+    height: '16px',
+    accentColor: '#f4f66b',
+  },
   bulkColumn: {
     display: 'flex',
     flexDirection: 'column',
     gap: '10px',
   },
-
   selectedInfo: {
     marginTop: '10px',
     color: '#b7c0cd',
     fontWeight: '700',
   },
-
   groupSection: {
     marginBottom: '18px',
   },
-
   groupTitle: {
     fontSize: '1.6rem',
     color: '#f4f66b',
@@ -1517,98 +1505,111 @@ const styles = {
     paddingLeft: '4px',
     fontWeight: '800',
   },
-
   itemsColumn: {
     display: 'flex',
     flexDirection: 'column',
-    gap: '14px',
+    gap: '10px',
   },
-
   itemCard: {
     background: '#1f2530',
-    borderRadius: '20px',
-    padding: '18px',
+    borderRadius: '18px',
+    padding: '14px 16px',
     border: '1px solid #343d4d',
   },
-
-  itemCardCompact: {
-    paddingBottom: '14px',
-  },
-
   itemCardExpanded: {
     border: '1px solid #7f1d1d',
     background: '#2a1f25',
   },
-
-  itemTopRow: {
+  itemCompactRow: {
     display: 'flex',
-    justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: '8px',
-  },
-
-  itemHeaderCompact: {
-    display: 'flex',
     justifyContent: 'space-between',
-    alignItems: 'flex-start',
-    gap: '12px',
-    marginBottom: '12px',
-    flexWrap: 'wrap',
+    gap: '14px',
   },
-
-  itemMainInfo: {
+  itemLeftArea: {
     flex: 1,
-    minWidth: '220px',
+    minWidth: 0,
+    display: 'flex',
+    flexDirection: 'column',
+    gap: '7px',
   },
-
+  itemRightArea: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '10px',
+    flexShrink: 0,
+  },
   itemTitleCompact: {
-    fontSize: '1.08rem',
-    lineHeight: 1.3,
+    fontSize: '1rem',
+    lineHeight: 1.25,
     margin: 0,
     color: '#ffffff',
     fontWeight: '700',
   },
-
   itemSubInfo: {
-    margin: '6px 0 0 0',
+    margin: 0,
     color: '#b7c0cd',
-    fontSize: '0.95rem',
+    fontSize: '0.9rem',
   },
-
   statusInlineBadge: {
     borderRadius: '999px',
-    padding: '8px 14px',
-    fontSize: '0.88rem',
+    padding: '7px 12px',
+    fontSize: '0.8rem',
     fontWeight: '800',
     whiteSpace: 'nowrap',
   },
-
   statusInlineConforme: {
     background: '#16a34a',
     color: '#ffffff',
   },
-
   statusInlineNaoConforme: {
     background: '#ef4444',
     color: '#ffffff',
   },
-
   statusInlinePendente: {
     background: '#f59e0b',
     color: '#ffffff',
   },
-
+  iconActionsRow: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '8px',
+  },
+  iconButton: {
+    width: '38px',
+    height: '38px',
+    minWidth: '38px',
+    borderRadius: '999px',
+    background: 'transparent',
+    display: 'inline-flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    fontSize: '1.35rem',
+    fontWeight: '900',
+    cursor: 'pointer',
+  },
+  iconButtonConforme: {
+    border: '2px solid #22c55e',
+    color: '#22c55e',
+  },
+  iconButtonNaoConforme: {
+    border: '2px solid #ef4444',
+    color: '#ef4444',
+  },
+  naoConformeBox: {
+    marginTop: '16px',
+    borderTop: '1px solid #343d4d',
+    paddingTop: '16px',
+  },
   fieldBlock: {
     marginBottom: '14px',
   },
-
   fieldLabel: {
     display: 'block',
     fontWeight: '800',
     marginBottom: '8px',
     color: '#ffffff',
   },
-
   input: {
     width: '100%',
     minHeight: '50px',
@@ -1619,39 +1620,6 @@ const styles = {
     background: '#151922',
     color: '#ffffff',
   },
-
-  statusButtonRow: {
-    display: 'grid',
-    gridTemplateColumns: '1fr 1fr',
-    gap: '10px',
-    marginBottom: '14px',
-  },
-
-  statusButton: {
-    minHeight: '50px',
-    borderRadius: '14px',
-    border: 'none',
-    fontWeight: '800',
-    fontSize: '1rem',
-    padding: '12px 16px',
-    cursor: 'pointer',
-  },
-
-  statusButtonInactive: {
-    background: '#293241',
-    color: '#ffffff',
-  },
-
-  statusButtonActiveConforme: {
-    background: '#16a34a',
-    color: '#ffffff',
-  },
-
-  statusButtonActiveNaoConforme: {
-    background: '#ef4444',
-    color: '#ffffff',
-  },
-
   textarea: {
     width: '100%',
     minHeight: '100px',
@@ -1663,13 +1631,11 @@ const styles = {
     background: '#151922',
     color: '#ffffff',
   },
-
   photoButtonsColumn: {
     display: 'flex',
     flexDirection: 'column',
     gap: '10px',
   },
-
   photoButton: {
     width: '100%',
     minHeight: '50px',
@@ -1683,7 +1649,6 @@ const styles = {
     padding: '12px 16px',
     cursor: 'pointer',
   },
-
   photoButtonSecondary: {
     width: '100%',
     minHeight: '50px',
@@ -1697,20 +1662,17 @@ const styles = {
     padding: '12px 16px',
     cursor: 'pointer',
   },
-
   fileName: {
     marginTop: '10px',
     color: '#b7c0cd',
     fontSize: '0.95rem',
   },
-
   previewGrid: {
     display: 'grid',
     gridTemplateColumns: '1fr 1fr',
     gap: '10px',
     marginTop: '12px',
   },
-
   imagePreview: {
     width: '100%',
     maxHeight: '260px',
@@ -1718,23 +1680,19 @@ const styles = {
     borderRadius: '14px',
     border: '1px solid #343d4d',
   },
-
   readOnlyBlock: {
-    marginTop: '8px',
+    marginTop: '14px',
   },
-
   readOnlyText: {
     margin: '0 0 8px 0',
     color: '#d1d5db',
   },
-
   signatureBox: {
     border: '2px dashed #343d4d',
     borderRadius: '16px',
     overflow: 'hidden',
     background: '#ffffff',
   },
-
   signatureCanvas: {
     width: '100%',
     height: '220px',
@@ -1742,26 +1700,22 @@ const styles = {
     background: '#ffffff',
     touchAction: 'none',
   },
-
   signaturePreview: {
     width: '100%',
     borderRadius: '14px',
     marginTop: '12px',
     border: '1px solid #343d4d',
   },
-
   signatureButtons: {
     display: 'flex',
     flexDirection: 'column',
     gap: '10px',
     marginTop: '12px',
   },
-
   loadingText: {
     color: '#d1d5db',
     fontSize: '1rem',
   },
-
   emptyText: {
     color: '#b7c0cd',
     fontSize: '1rem',
