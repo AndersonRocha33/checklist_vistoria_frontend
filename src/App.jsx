@@ -3,6 +3,7 @@ import Login from './pages/LoginPage.jsx';
 import DashboardPage from './pages/DashboardPage.jsx';
 import InspectionPage from './pages/InspectionPage.jsx';
 import ProtectedRoute from './components/ProtectedRoute.jsx';
+import ResetPasswordPage from './pages/ResetPasswordPage.jsx';
 
 export default function App() {
   return (
@@ -30,6 +31,7 @@ export default function App() {
 
         <Route path="/" element={<Navigate to="/login" replace />} />
         <Route path="*" element={<Navigate to="/login" replace />} />
+        <Route path="/reset-password" element={<ResetPasswordPage />} />
       </Routes>
     </BrowserRouter>
   );

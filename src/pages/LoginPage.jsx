@@ -87,6 +87,38 @@ export default function LoginPage() {
     }
   }
 
+  async function handleForgotPassword() {
+    limparMensagens();
+
+    const emailInformado = window.prompt('Digite seu e-mail cadastrado:');
+
+    if (!emailInformado) {
+      return;
+    }
+
+    try {
+      setLoading(true);
+
+      const response = await api.post('/auth/forgot-password', {
+        email: emailInformado.trim().toLowerCase(),
+      });
+
+      setMensagemSucesso(
+        response.data.message ||
+          'Se o e-mail estiver cadastrado, enviaremos um link para redefinir a senha.'
+      );
+    } catch (error) {
+      console.error(error);
+      setMensagemErro(
+        error.response?.data?.error ||
+          error.response?.data?.message ||
+          'Erro ao solicitar redefinição de senha.'
+      );
+    } finally {
+      setLoading(false);
+    }
+  }
+
   function alternarModo() {
     setModoCadastro((valorAtual) => !valorAtual);
     limparFormulario();
@@ -98,9 +130,11 @@ export default function LoginPage() {
       <div style={styles.card}>
         <div style={styles.logoBox}>
           <div style={styles.logoIcon}>✓</div>
+
           <h2 style={styles.logo}>
             <span style={styles.logoWhite}>Spot</span>CheckList
           </h2>
+
           <p style={styles.slogan}>Pronto para morar</p>
         </div>
 
@@ -158,9 +192,7 @@ export default function LoginPage() {
             </div>
           </div>
 
-          {mensagemErro ? (
-            <div style={styles.errorBox}>{mensagemErro}</div>
-          ) : null}
+          {mensagemErro ? <div style={styles.errorBox}>{mensagemErro}</div> : null}
 
           {mensagemSucesso ? (
             <div style={styles.successBox}>{mensagemSucesso}</div>
@@ -180,6 +212,17 @@ export default function LoginPage() {
             ? 'Já tem conta? Fazer login'
             : 'Ainda não tem conta? Cadastre-se'}
         </button>
+
+        {!modoCadastro && (
+          <button
+            type="button"
+            onClick={handleForgotPassword}
+            style={styles.forgotButton}
+            disabled={loading}
+          >
+            Esqueci minha senha
+          </button>
+        )}
       </div>
     </div>
   );
@@ -191,7 +234,8 @@ const styles = {
     display: 'flex',
     justifyContent: 'center',
     alignItems: 'center',
-    background: 'radial-gradient(circle at top, #293241 0%, #151922 45%, #11151d 100%)',
+    background:
+      'radial-gradient(circle at top, #293241 0%, #151922 45%, #11151d 100%)',
     padding: '16px',
     boxSizing: 'border-box',
   },
@@ -322,6 +366,17 @@ const styles = {
     cursor: 'pointer',
     fontWeight: '800',
     fontSize: '1rem',
+    textDecoration: 'underline',
+  },
+  forgotButton: {
+    width: '100%',
+    marginTop: '10px',
+    border: 'none',
+    background: 'transparent',
+    color: '#b7c0cd',
+    cursor: 'pointer',
+    fontWeight: '700',
+    fontSize: '0.95rem',
     textDecoration: 'underline',
   },
   errorBox: {
