@@ -128,6 +128,8 @@ export default function InspectionPage() {
   const [savedItemIds, setSavedItemIds] = useState([]);
   const [selectedLocation, setSelectedLocation] = useState('TODOS');
   const [showSavedItems, setShowSavedItems] = useState(false);
+  const [selectedCategories, setSelectedCategories] = useState([]);
+  const [generatingPendingReport, setGeneratingPendingReport] = useState(false);
   const [inspectorPreview, setInspectorPreview] = useState('');
   const [clientPreview, setClientPreview] = useState('');
   const [savingInspectorSignature, setSavingInspectorSignature] = useState(false);
@@ -582,6 +584,62 @@ export default function InspectionPage() {
 
       setSavingBulk(true);
 
+      const selectedDrafts = selectedItemIds
+        .map((itemId) => getDraftItem(itemId))
+        .filter(Boolean);
+
+      const allAreConforme = selectedDrafts.every(
+        (draft) => draft.status === 'CONFORME'
+      );
+
+      if (allAreConforme) {
+        await api.put('/inspections/items/batch', {
+          itemIds: selectedItemIds,
+          status: 'CONFORME',
+        });
+
+        setInspection((prev) => ({
+          ...prev,
+          items: prev.items.map((item) =>
+            selectedItemIds.includes(item.id)
+              ? {
+                  ...item,
+                  status: 'CONFORME',
+                  notes: '',
+                  photoUrl: '',
+                  photoUrls: [],
+                }
+              : item
+          ),
+        }));
+
+        setDraftItems((prev) =>
+          prev.map((item) => {
+            if (!selectedItemIds.includes(item.id)) return item;
+
+            clearDraftPhotos(item);
+
+            return {
+              ...item,
+              status: 'CONFORME',
+              notes: '',
+              photoUrl: '',
+              photoUrls: [],
+              selectedFiles: [],
+              localPreviewUrls: [],
+              isEditingNaoConforme: false,
+              queuedAsConforme: false,
+              forceEdit: false,
+            };
+          })
+        );
+
+        setSavedItemIds((prev) => [...new Set([...prev, ...selectedItemIds])]);
+        setSelectedItemIds([]);
+        alert('Itens conformes salvos com sucesso.');
+        return;
+      }
+
       for (const itemId of selectedItemIds) {
         const draft = getDraftItem(itemId);
         if (!draft) continue;
@@ -734,6 +792,42 @@ export default function InspectionPage() {
     }
   }
 
+  async function handleDownloadPendingReport() {
+    try {
+      setGeneratingPendingReport(true);
+
+      const params = new URLSearchParams();
+
+      if (selectedCategories.length > 0) {
+        params.append('categories', selectedCategories.join(','));
+      }
+
+      const response = await api.get(
+        `/inspections/${id}/pending-report?${params.toString()}`,
+        {
+          responseType: 'blob',
+        }
+      );
+
+      const blob = new Blob([response.data], { type: 'application/pdf' });
+      const url = window.URL.createObjectURL(blob);
+
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `pendencias-${inspection.apartment.number}.pdf`;
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+
+      window.URL.revokeObjectURL(url);
+    } catch (error) {
+      console.error(error);
+      alert('Erro ao gerar relatório de pendências.');
+    } finally {
+      setGeneratingPendingReport(false);
+    }
+  }
+
   function clearCanvas(canvasRef, setPreview) {
     const canvas = canvasRef.current;
     if (!canvas) return;
@@ -741,6 +835,24 @@ export default function InspectionPage() {
     const ctx = canvas.getContext('2d');
     ctx.clearRect(0, 0, canvas.width, canvas.height);
     setPreview('');
+  }
+
+  function toggleCategory(category) {
+    setSelectedCategories((prev) => {
+      if (prev.includes(category)) {
+        return prev.filter((item) => item !== category);
+      }
+
+      return [...prev, category];
+    });
+  }
+
+  function selectAllCategories() {
+    setSelectedCategories(availableCategories);
+  }
+
+  function clearSelectedCategories() {
+    setSelectedCategories([]);
   }
 
   const mergedItems = useMemo(() => {
@@ -827,6 +939,20 @@ export default function InspectionPage() {
     showSavedItems,
   ]);
 
+  const availableCategories = useMemo(() => {
+    if (!inspection) return [];
+
+    const categories = [
+      ...new Set(
+        inspection.items.map(
+          (item) => item.checklistItem.category || 'Sem categoria'
+        )
+      ),
+    ];
+
+    return categories.sort((a, b) => a.localeCompare(b, 'pt-BR'));
+  }, [inspection]);
+
   const locations = useMemo(() => {
     const uniqueLocations = [
       ...new Set(
@@ -889,9 +1015,11 @@ export default function InspectionPage() {
           <h1 style={styles.title}>
             {inspection.apartment.enterprise.name} - Apto {inspection.apartment.number}
           </h1>
+
           <p style={styles.metaText}>
             <strong>Responsável:</strong> {inspection.user.name}
           </p>
+
           <p style={styles.metaText}>
             <strong>Status da vistoria:</strong> {inspection.status}
           </p>
@@ -911,8 +1039,72 @@ export default function InspectionPage() {
 
         <div style={styles.headerButtons}>
           <button style={styles.secondaryButton} onClick={handleDownloadReport}>
-            Gerar relatório PDF
+            Gerar relatório geral PDF
           </button>
+
+          {availableCategories.length > 0 && (
+            <div style={styles.pendingReportBox}>
+              <h3 style={styles.pendingReportTitle}>Relatório de pendências</h3>
+
+              <p style={styles.pendingReportText}>
+                Selecione uma ou mais categorias para gerar o PDF do prestador.
+              </p>
+
+              <div style={styles.categoryActions}>
+                <button
+                  type="button"
+                  style={styles.smallSecondaryButton}
+                  onClick={selectAllCategories}
+                >
+                  Selecionar todas
+                </button>
+
+                <button
+                  type="button"
+                  style={styles.smallSecondaryButton}
+                  onClick={clearSelectedCategories}
+                >
+                  Limpar seleção
+                </button>
+              </div>
+
+              <div style={styles.categoryGrid}>
+                {availableCategories.map((category) => {
+                  const checked = selectedCategories.includes(category);
+
+                  return (
+                    <label key={category} style={styles.categoryOption}>
+                      <input
+                        type="checkbox"
+                        checked={checked}
+                        onChange={() => toggleCategory(category)}
+                        style={styles.smallCheckbox}
+                      />
+                      <span>{category}</span>
+                    </label>
+                  );
+                })}
+              </div>
+
+              <p style={styles.selectedInfo}>
+                Categorias selecionadas:{' '}
+                {selectedCategories.length > 0
+                  ? selectedCategories.join(', ')
+                  : 'Todas'}
+              </p>
+
+              <button
+                type="button"
+                style={styles.secondaryButton}
+                onClick={handleDownloadPendingReport}
+                disabled={generatingPendingReport}
+              >
+                {generatingPendingReport
+                  ? 'Gerando relatório...'
+                  : 'Gerar relatório de pendências'}
+              </button>
+            </div>
+          )}
 
           <button
             style={styles.secondaryButton}
@@ -935,30 +1127,6 @@ export default function InspectionPage() {
           )}
         </div>
       </div>
-
-      {displayItems.length > 0 && (
-        <div style={styles.card}>
-          <h2 style={styles.sectionTitle}>Filtro</h2>
-
-          <div style={styles.fieldBlock}>
-            <label style={styles.fieldLabel}>Filtrar por ambiente</label>
-            <select
-              value={selectedLocation}
-              onChange={(e) => {
-                setSelectedLocation(e.target.value);
-                setSelectedItemIds([]);
-              }}
-              style={styles.input}
-            >
-              {locations.map((location) => (
-                <option key={location} value={location}>
-                  {location}
-                </option>
-              ))}
-            </select>
-          </div>
-        </div>
-      )}
 
       {!isReadOnlyFinishedWithoutPending && !showSavedItems && displayItems.length > 0 && (
         <div style={styles.card}>
@@ -1004,6 +1172,31 @@ export default function InspectionPage() {
           <p style={styles.selectedInfo}>
             Itens visíveis: {visibleItems.length} | Selecionados: {selectedItemIds.length}
           </p>
+        </div>
+      )}
+
+      {displayItems.length > 0 && (
+        <div style={styles.card}>
+          <h2 style={styles.sectionTitle}>Filtro</h2>
+
+          <div style={styles.fieldBlock}>
+            <label style={styles.fieldLabel}>Filtrar por ambiente</label>
+
+            <select
+              value={selectedLocation}
+              onChange={(e) => {
+                setSelectedLocation(e.target.value);
+                setSelectedItemIds([]);
+              }}
+              style={styles.input}
+            >
+              {locations.map((location) => (
+                <option key={location} value={location}>
+                  {location}
+                </option>
+              ))}
+            </select>
+          </div>
         </div>
       )}
 
@@ -1088,6 +1281,10 @@ export default function InspectionPage() {
 
                       <p style={styles.itemSubInfo}>
                         Quantidade: {item.checklistItem.quantity}
+                      </p>
+
+                      <p style={styles.itemCategoryText}>
+                        Categoria: {item.checklistItem.category || 'Sem categoria'}
                       </p>
                     </div>
 
@@ -1440,6 +1637,37 @@ const styles = {
     padding: '12px 16px',
     cursor: 'pointer',
   },
+  smallSecondaryButton: {
+    minHeight: '42px',
+    border: '1px solid #343d4d',
+    borderRadius: '12px',
+    background: '#222938',
+    color: '#ffffff',
+    fontWeight: '800',
+    fontSize: '0.92rem',
+    padding: '10px 12px',
+    cursor: 'pointer',
+  },
+  pendingReportBox: {
+    background: '#151922',
+    border: '1px solid #343d4d',
+    borderRadius: '18px',
+    padding: '16px',
+    display: 'flex',
+    flexDirection: 'column',
+    gap: '14px',
+  },
+  pendingReportTitle: {
+    margin: 0,
+    color: '#ffffff',
+    fontSize: '1.1rem',
+    fontWeight: '800',
+  },
+  pendingReportText: {
+    margin: 0,
+    color: '#b7c0cd',
+    lineHeight: 1.4,
+  },
   dangerButton: {
     width: '100%',
     minHeight: '48px',
@@ -1493,6 +1721,29 @@ const styles = {
   selectedInfo: {
     marginTop: '10px',
     color: '#b7c0cd',
+    fontWeight: '700',
+    lineHeight: 1.4,
+  },
+  categoryActions: {
+    display: 'grid',
+    gridTemplateColumns: '1fr 1fr',
+    gap: '10px',
+  },
+  categoryGrid: {
+    display: 'grid',
+    gridTemplateColumns: 'repeat(auto-fit, minmax(190px, 1fr))',
+    gap: '10px',
+  },
+  categoryOption: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '10px',
+    background: '#1f2530',
+    border: '1px solid #343d4d',
+    borderRadius: '12px',
+    padding: '10px 12px',
+    color: '#ffffff',
+    fontSize: '0.92rem',
     fontWeight: '700',
   },
   groupSection: {
@@ -1551,6 +1802,12 @@ const styles = {
     color: '#b7c0cd',
     fontSize: '0.9rem',
   },
+  itemCategoryText: {
+    margin: 0,
+    color: '#f4f66b',
+    fontSize: '0.82rem',
+    fontWeight: '700',
+  },
   statusInlineBadge: {
     borderRadius: '999px',
     padding: '7px 12px',
@@ -1602,7 +1859,7 @@ const styles = {
     paddingTop: '16px',
   },
   fieldBlock: {
-    marginBottom: '14px',
+    marginBottom: '0',
   },
   fieldLabel: {
     display: 'block',
@@ -1719,5 +1976,6 @@ const styles = {
   emptyText: {
     color: '#b7c0cd',
     fontSize: '1rem',
+    lineHeight: 1.45,
   },
 };
