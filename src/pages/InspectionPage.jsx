@@ -129,6 +129,7 @@ export default function InspectionPage() {
   const [selectedLocation, setSelectedLocation] = useState('TODOS');
   const [showSavedItems, setShowSavedItems] = useState(false);
   const [selectedCategories, setSelectedCategories] = useState([]);
+  const [categoryDropdownOpen, setCategoryDropdownOpen] = useState(false);
   const [generatingPendingReport, setGeneratingPendingReport] = useState(false);
   const [inspectorPreview, setInspectorPreview] = useState('');
   const [clientPreview, setClientPreview] = useState('');
@@ -201,6 +202,8 @@ export default function InspectionPage() {
 
       setSelectedItemIds([]);
       setSelectedLocation('TODOS');
+      setSelectedCategories([]);
+      setCategoryDropdownOpen(false);
 
       if (inspectionData.reopenedFromPending) {
         setSavedItemIds(
@@ -944,14 +947,14 @@ export default function InspectionPage() {
 
     const categories = [
       ...new Set(
-        inspection.items.map(
-          (item) => item.checklistItem.category || 'Sem categoria'
-        )
+        mergedItems
+          .filter((item) => item.status === 'NAO_CONFORME')
+          .map((item) => item.checklistItem.category || 'Sem categoria')
       ),
     ];
 
     return categories.sort((a, b) => a.localeCompare(b, 'pt-BR'));
-  }, [inspection]);
+  }, [inspection, mergedItems]);
 
   const locations = useMemo(() => {
     const uniqueLocations = [
@@ -1047,50 +1050,69 @@ export default function InspectionPage() {
               <h3 style={styles.pendingReportTitle}>Relatório de pendências</h3>
 
               <p style={styles.pendingReportText}>
-                Selecione uma ou mais categorias para gerar o PDF do prestador.
+                Selecione uma ou mais categorias com pendência para gerar o PDF do prestador.
               </p>
 
-              <div style={styles.categoryActions}>
+              <div style={styles.dropdownWrapper}>
                 <button
                   type="button"
-                  style={styles.smallSecondaryButton}
-                  onClick={selectAllCategories}
+                  style={styles.dropdownButton}
+                  onClick={() => setCategoryDropdownOpen((prev) => !prev)}
                 >
-                  Selecionar todas
+                  <span>
+                    {selectedCategories.length > 0
+                      ? `${selectedCategories.length} categoria(s) selecionada(s)`
+                      : 'Todas as categorias com pendência'}
+                  </span>
+                  <span>{categoryDropdownOpen ? '▲' : '▼'}</span>
                 </button>
 
-                <button
-                  type="button"
-                  style={styles.smallSecondaryButton}
-                  onClick={clearSelectedCategories}
-                >
-                  Limpar seleção
-                </button>
-              </div>
+                {categoryDropdownOpen && (
+                  <div style={styles.dropdownMenu}>
+                    <div style={styles.categoryActions}>
+                      <button
+                        type="button"
+                        style={styles.smallSecondaryButton}
+                        onClick={selectAllCategories}
+                      >
+                        Selecionar todas
+                      </button>
 
-              <div style={styles.categoryGrid}>
-                {availableCategories.map((category) => {
-                  const checked = selectedCategories.includes(category);
+                      <button
+                        type="button"
+                        style={styles.smallSecondaryButton}
+                        onClick={clearSelectedCategories}
+                      >
+                        Limpar seleção
+                      </button>
+                    </div>
 
-                  return (
-                    <label key={category} style={styles.categoryOption}>
-                      <input
-                        type="checkbox"
-                        checked={checked}
-                        onChange={() => toggleCategory(category)}
-                        style={styles.smallCheckbox}
-                      />
-                      <span>{category}</span>
-                    </label>
-                  );
-                })}
+                    <div style={styles.dropdownOptionsList}>
+                      {availableCategories.map((category) => {
+                        const checked = selectedCategories.includes(category);
+
+                        return (
+                          <label key={category} style={styles.dropdownOption}>
+                            <input
+                              type="checkbox"
+                              checked={checked}
+                              onChange={() => toggleCategory(category)}
+                              style={styles.smallCheckbox}
+                            />
+                            <span>{category}</span>
+                          </label>
+                        );
+                      })}
+                    </div>
+                  </div>
+                )}
               </div>
 
               <p style={styles.selectedInfo}>
                 Categorias selecionadas:{' '}
                 {selectedCategories.length > 0
                   ? selectedCategories.join(', ')
-                  : 'Todas'}
+                  : 'Todas com pendência'}
               </p>
 
               <button
@@ -1668,6 +1690,56 @@ const styles = {
     color: '#b7c0cd',
     lineHeight: 1.4,
   },
+  dropdownWrapper: {
+    position: 'relative',
+    width: '100%',
+  },
+  dropdownButton: {
+    width: '100%',
+    minHeight: '50px',
+    borderRadius: '14px',
+    border: '1px solid #343d4d',
+    background: '#1f2530',
+    color: '#ffffff',
+    fontWeight: '800',
+    fontSize: '1rem',
+    padding: '12px 14px',
+    cursor: 'pointer',
+    display: 'flex',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    gap: '12px',
+    textAlign: 'left',
+  },
+  dropdownMenu: {
+    marginTop: '10px',
+    background: '#1f2530',
+    border: '1px solid #343d4d',
+    borderRadius: '14px',
+    padding: '12px',
+    display: 'flex',
+    flexDirection: 'column',
+    gap: '12px',
+  },
+  dropdownOptionsList: {
+    display: 'flex',
+    flexDirection: 'column',
+    gap: '8px',
+    maxHeight: '260px',
+    overflowY: 'auto',
+  },
+  dropdownOption: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '10px',
+    background: '#151922',
+    border: '1px solid #343d4d',
+    borderRadius: '12px',
+    padding: '10px 12px',
+    color: '#ffffff',
+    fontSize: '0.92rem',
+    fontWeight: '700',
+  },
   dangerButton: {
     width: '100%',
     minHeight: '48px',
@@ -1728,23 +1800,6 @@ const styles = {
     display: 'grid',
     gridTemplateColumns: '1fr 1fr',
     gap: '10px',
-  },
-  categoryGrid: {
-    display: 'grid',
-    gridTemplateColumns: 'repeat(auto-fit, minmax(190px, 1fr))',
-    gap: '10px',
-  },
-  categoryOption: {
-    display: 'flex',
-    alignItems: 'center',
-    gap: '10px',
-    background: '#1f2530',
-    border: '1px solid #343d4d',
-    borderRadius: '12px',
-    padding: '10px 12px',
-    color: '#ffffff',
-    fontSize: '0.92rem',
-    fontWeight: '700',
   },
   groupSection: {
     marginBottom: '18px',
