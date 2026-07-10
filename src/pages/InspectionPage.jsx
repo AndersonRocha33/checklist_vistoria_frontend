@@ -131,6 +131,9 @@ export default function InspectionPage() {
   const [selectedCategories, setSelectedCategories] = useState([]);
   const [categoryDropdownOpen, setCategoryDropdownOpen] = useState(false);
   const [generatingPendingReport, setGeneratingPendingReport] = useState(false);
+  const [editingCompletedInspection, setEditingCompletedInspection] = useState(false);
+  const [startingCompletedEdit, setStartingCompletedEdit] = useState(false);
+  const [finishingCompletedEdit, setFinishingCompletedEdit] = useState(false);
   const [inspectorPreview, setInspectorPreview] = useState('');
   const [clientPreview, setClientPreview] = useState('');
   const [savingInspectorSignature, setSavingInspectorSignature] = useState(false);
@@ -204,6 +207,9 @@ export default function InspectionPage() {
       setSelectedLocation('TODOS');
       setSelectedCategories([]);
       setCategoryDropdownOpen(false);
+      setEditingCompletedInspection(
+        Boolean(inspectionData.editingAfterCompletion)
+      );
 
       if (inspectionData.reopenedFromPending) {
         setSavedItemIds(
@@ -503,18 +509,19 @@ export default function InspectionPage() {
       return;
     }
 
-    if (status === 'CONFORME') {
+    if (status === 'CONFORME' || status === 'PENDENTE') {
       const currentDraft = getDraftItem(itemId);
       if (!currentDraft) return;
 
       const nextDraft = {
         ...currentDraft,
-        status: 'CONFORME',
-        notes: '',
-        photoUrl: '',
-        photoUrls: [],
-        selectedFiles: [],
-        localPreviewUrls: [],
+        status,
+        notes: status === 'CONFORME' ? '' : currentDraft.notes,
+        photoUrl: status === 'CONFORME' ? '' : currentDraft.photoUrl,
+        photoUrls: status === 'CONFORME' ? [] : currentDraft.photoUrls,
+        selectedFiles: status === 'CONFORME' ? [] : currentDraft.selectedFiles,
+        localPreviewUrls:
+          status === 'CONFORME' ? [] : currentDraft.localPreviewUrls,
         isEditingNaoConforme: false,
         queuedAsConforme: false,
         forceEdit: currentDraft.forceEdit || false,
@@ -526,7 +533,11 @@ export default function InspectionPage() {
         setDraftItems((prev) =>
           prev.map((item) => {
             if (item.id !== itemId) return item;
-            clearDraftPhotos(item);
+
+            if (status === 'CONFORME') {
+              clearDraftPhotos(item);
+            }
+
             return nextDraft;
           })
         );
@@ -537,7 +548,7 @@ export default function InspectionPage() {
         alert(
           error.response?.data?.error ||
             error.response?.data?.message ||
-            'Erro ao salvar item como conforme.'
+            'Erro ao salvar o novo status do item.'
         );
         await loadInspection();
       } finally {
@@ -752,6 +763,67 @@ export default function InspectionPage() {
     }
   }
 
+  async function handleStartCompletedEdit() {
+    const confirmed = window.confirm(
+      'Esta vistoria já foi concluída.\n\nAo continuar, todos os itens poderão ser editados sem apagar as assinaturas existentes.\n\nDeseja ativar o modo de edição?'
+    );
+
+    if (!confirmed) return;
+
+    try {
+      setStartingCompletedEdit(true);
+
+      const response = await api.put(`/inspections/${id}/edit/start`);
+
+      setInspection(response.data.inspection);
+      setEditingCompletedInspection(true);
+      setShowSavedItems(false);
+      setSelectedItemIds([]);
+      setSelectedLocation('TODOS');
+
+      alert('Modo de edição ativado.');
+    } catch (error) {
+      console.error(error);
+      alert(
+        error.response?.data?.error ||
+          error.response?.data?.message ||
+          'Erro ao ativar o modo de edição.'
+      );
+    } finally {
+      setStartingCompletedEdit(false);
+    }
+  }
+
+  async function handleFinishCompletedEdit() {
+    const confirmed = window.confirm(
+      'Deseja salvar e encerrar a edição desta vistoria?'
+    );
+
+    if (!confirmed) return;
+
+    try {
+      setFinishingCompletedEdit(true);
+
+      const response = await api.put(`/inspections/${id}/edit/finish`);
+
+      setInspection(response.data.inspection);
+      setEditingCompletedInspection(false);
+      setSelectedItemIds([]);
+      setShowSavedItems(false);
+
+      alert('Alterações salvas com sucesso.');
+    } catch (error) {
+      console.error(error);
+      alert(
+        error.response?.data?.error ||
+          error.response?.data?.message ||
+          'Erro ao salvar as alterações da vistoria.'
+      );
+    } finally {
+      setFinishingCompletedEdit(false);
+    }
+  }
+
   async function handleFinishInspection() {
     try {
       setFinishing(true);
@@ -887,12 +959,12 @@ export default function InspectionPage() {
   }, [inspection, draftItems]);
 
   const isReadOnlyFinishedWithoutPending =
-    inspection?.status === 'CONCLUIDA' && !inspection?.reopenedFromPending;
+    inspection?.status === 'CONCLUIDA' && !editingCompletedInspection;
 
   const displayItems = useMemo(() => {
     if (!inspection) return [];
 
-    if (showSavedItems) {
+    if (showSavedItems || editingCompletedInspection) {
       return mergedItems;
     }
 
@@ -940,6 +1012,7 @@ export default function InspectionPage() {
     isReadOnlyFinishedWithoutPending,
     draftItems,
     showSavedItems,
+    editingCompletedInspection,
   ]);
 
   const availableCategories = useMemo(() => {
@@ -1038,12 +1111,53 @@ export default function InspectionPage() {
               Esta vistoria já foi concluída. Os itens estão sendo exibidos para consulta e geração de relatório.
             </p>
           )}
+
+          {editingCompletedInspection && (
+            <p style={styles.editingNotice}>
+              Modo de edição ativo. Você pode corrigir itens como conforme, não conforme ou pendente. As assinaturas existentes serão preservadas.
+            </p>
+          )}
+
+          {inspection.editedAfterCompletion && inspection.lastEditedAt && (
+            <p style={styles.lastEditText}>
+              <strong>Última alteração após a conclusão:</strong>{' '}
+              {new Date(inspection.lastEditedAt).toLocaleString('pt-BR')}
+              {inspection.lastEditedBy?.name
+                ? ` por ${inspection.lastEditedBy.name}`
+                : ''}
+            </p>
+          )}
         </div>
 
         <div style={styles.headerButtons}>
           <button style={styles.secondaryButton} onClick={handleDownloadReport}>
             Gerar relatório geral PDF
           </button>
+
+          {inspection.status === 'CONCLUIDA' &&
+            !editingCompletedInspection && (
+              <button
+                style={styles.primaryButton}
+                onClick={handleStartCompletedEdit}
+                disabled={startingCompletedEdit}
+              >
+                {startingCompletedEdit
+                  ? 'Ativando edição...'
+                  : 'Editar vistoria concluída'}
+              </button>
+            )}
+
+          {editingCompletedInspection && (
+            <button
+              style={styles.primaryButton}
+              onClick={handleFinishCompletedEdit}
+              disabled={finishingCompletedEdit}
+            >
+              {finishingCompletedEdit
+                ? 'Salvando alterações...'
+                : 'Salvar alterações da vistoria'}
+            </button>
+          )}
 
           {availableCategories.length > 0 && (
             <div style={styles.pendingReportBox}>
@@ -1128,17 +1242,19 @@ export default function InspectionPage() {
             </div>
           )}
 
-          <button
-            style={styles.secondaryButton}
-            onClick={() => {
-              setShowSavedItems((prev) => !prev);
-              setSelectedItemIds([]);
-            }}
-          >
-            {showSavedItems ? 'Voltar para pendentes' : 'Revisar itens salvos'}
-          </button>
+          {!editingCompletedInspection && (
+            <button
+              style={styles.secondaryButton}
+              onClick={() => {
+                setShowSavedItems((prev) => !prev);
+                setSelectedItemIds([]);
+              }}
+            >
+              {showSavedItems ? 'Voltar para pendentes' : 'Revisar itens salvos'}
+            </button>
+          )}
 
-          {!isReadOnlyFinishedWithoutPending && (
+          {inspection.status !== 'CONCLUIDA' && (
             <button
               style={styles.primaryButton}
               onClick={handleFinishInspection}
@@ -1360,6 +1476,22 @@ export default function InspectionPage() {
                             }}
                           >
                             ✕
+                          </button>
+
+                          <button
+                            type="button"
+                            title="Marcar como pendente"
+                            onClick={() => handleStatusChange(item.id, 'PENDENTE')}
+                            disabled={isSavingThisItem || savingBulk}
+                            style={{
+                              ...styles.iconButton,
+                              ...styles.iconButtonPendente,
+                              ...((isSavingThisItem || savingBulk)
+                                ? styles.disabledButton
+                                : {}),
+                            }}
+                          >
+                            !
                           </button>
                         </div>
                       )}
@@ -1629,6 +1761,22 @@ const styles = {
     borderRadius: '12px',
     padding: '10px 12px',
     marginTop: '8px',
+  },
+  editingNotice: {
+    fontSize: '0.95rem',
+    color: '#111827',
+    background: '#f4f66b',
+    borderRadius: '12px',
+    padding: '10px 12px',
+    marginTop: '8px',
+    fontWeight: '700',
+    lineHeight: 1.4,
+  },
+  lastEditText: {
+    fontSize: '0.9rem',
+    color: '#b7c0cd',
+    marginTop: '10px',
+    lineHeight: 1.4,
   },
   headerButtons: {
     display: 'flex',
@@ -1907,6 +2055,10 @@ const styles = {
   iconButtonNaoConforme: {
     border: '2px solid #ef4444',
     color: '#ef4444',
+  },
+  iconButtonPendente: {
+    border: '2px solid #f59e0b',
+    color: '#f59e0b',
   },
   naoConformeBox: {
     marginTop: '16px',
